@@ -36,14 +36,19 @@ ares-device-info --device tv             # kiểm tra: phải in thông tin tivi
 ares-install --device tv dist/com.viet.home_1.0.0_all.ipk
 ares-launch  --device tv com.viet.home
 ```
-Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.0_all.ipk`, mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
+Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.0_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
 
 YouTube không quảng cáo (tuỳ chọn, bên thứ ba, không kèm trong repo): lấy gói `youtube.leanback.v4_*_all.ipk` từ bản phát hành chính thức của [webosbrew/youtube-webos](https://github.com/webosbrew/youtube-webos/releases), kiểm sha256 theo trang phát hành rồi `ares-install` như trên.
 
 Xem app đã cài: `ares-install --device tv --list`. Gỡ: `ares-install --device tv --remove <id>`.
 
-### 4. Bật tivi là hiện Màn hình chính (tuỳ chọn)
-Cần tivi đã thêm vào Home Assistant bằng tích hợp **LG webOS TV**. Chép [`apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml`](apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml) vào `config/blueprints/automation/`, tạo automation từ blueprint, chọn tivi. Tivi chuyển `off → on` thì đợi (mặc định 12 giây) rồi mở app. Bật tivi để xem thẳng một nguồn thì màn này phủ lên: bấm **Back** để thoát.
+### 4. Bật tivi / thoát app là về Màn hình chính (tuỳ chọn)
+Cần tivi đã thêm vào Home Assistant bằng tích hợp **LG webOS TV** (thực thể có thuộc tính `app_id`). Chép [`apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml`](apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml) vào `config/blueprints/automation/`, tạo automation từ blueprint, chọn tivi.
+- **① TV vừa bật** (`off`/`unavailable` → `on`): đợi (mặc định 12 giây) rồi mở Màn hình chính.
+- **② Thoát một app trong danh sách «App quản lý»** (YouTube, SS IPTV, Live Cam, trình duyệt…): khi TV rơi về nguồn nền (HDMI/truyền hình/Home của LG) thì mở lại Màn hình chính, trễ ~2 giây. Chuyển app sang app khác, bấm nút **Input**, hoặc chính Màn hình chính mở lên thì **không** bị chen vào.
+- **③ Thay nút Home của LG** (mặc định **tắt**): bật thì bấm Home trên remote mở Màn hình chính. Mở Cài đặt của LG từ Màn hình chính chưa xác nhận được, nên để tắt; nút ⚙ trên remote vẫn vào Cài đặt.
+
+Làm được vì tivi báo `app_id` đổi và Home Assistant mở đè app; **không bắt được phím Back bên trong app khác** (cần root). Test trong Home Assistant thật: 17 tình huống (`apps/home/tests/test_blueprint.py`). Chưa kiểm: màn Home của LG báo `app_id` nào (mặc định `com.webos.app.home`, chỉnh trong blueprint).
 
 ### 5. Chống mất app sau khi tắt / rút điện
 **Hiện tượng đã đo:** sau khi tivi khởi động lại, `ares-install --list` **rỗng** dù tệp app vẫn nằm trong `/media/developer/apps/...`: tivi mất *đăng ký*, không mất tệp. Cài lại bằng `ares-install` là hiện lại. Nguyên nhân gốc **chưa xác định** (mới quan sát một lần trên một tivi).
@@ -62,11 +67,13 @@ Nhật ký: `/opt/tv-apps/giu_app_tv.log`. Dự kiến sau khi tivi bật lại,
 **Bộ canh KHÔNG làm được:** gia hạn phiên Developer Mode (phải bấm EXTEND trên tivi), và cài lại khi Developer Mode đã tắt hoặc phiên đã hết (cổng 9922 đóng).
 
 ## Kiểm thử
-- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 19 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 5 ý).
+- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 19 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 17 ý).
 - `apps/livecam`: `node tests/test_layers.js`, `node tests/test_cardfmt.js`, `python3 tests/e2e_chrome.py`, `tests/test_blueprint.py`.
 - `tools/giu_app_tv.sh`: thử trên tivi thật: thư mục gói rỗng, đủ app, thiếu app (báo), cài lại thật, chạy lại (không còn thiếu), tivi tắt (im lặng).
 - Cú pháp ES5: `acorn` với `ecmaVersion: 5`.
 
 ## Chưa kiểm
-- Màn hình chính tự mở khi bật tivi thật; app còn sau khi tắt/rút điện *khi có bộ canh*.
+- Màn hình chính tự mở khi bật tivi thật và khi thoát app thật; app còn sau khi tắt/rút điện *khi có bộ canh*.
+- Mở **Cài đặt** của LG bằng `applicationManager/launch` từ xa (không thấy đổi app tiền cảnh).
+- Lưu ý đóng gói: `ares-install` chỉ nhận gói do `ares-package` tạo; mọi `build.sh`/`build_ipk.sh` ở đây dùng `ares-package` (bản đầu của Live Cam đóng tay bằng `ar` bị tivi từ chối, đã thay).
 - Live Cam phát camera trên tivi thật; gói `popup` (kiểu cửa sổ `overlay` không có trong tài liệu LG).

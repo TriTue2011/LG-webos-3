@@ -1,4 +1,4 @@
-"""Blueprint «bat TV la hien Man hinh chinh» chay THAT trong HA: TV off->on thi doi roi gui webostv.command launch com.viet.home."""
+"""Blueprint «bat TV / thoat app la ve Man hinh chinh» chay THAT trong HA: webostv.command launch com.viet.home dung luc, khong chen vao khi nguoi dung doi app/nguon."""
 import asyncio
 import datetime
 import os
@@ -26,11 +26,11 @@ def cmds(hass):
     return got
 
 
-async def _setup(hass, start, extra=None):
+async def _setup(hass, start, extra=None, attrs=None):
     dst = hass.config.path("blueprints", "automation", "home")
     os.makedirs(dst, exist_ok=True)
     shutil.copy(BP, dst)
-    hass.states.async_set(TV, start)
+    hass.states.async_set(TV, start, attrs or {})
     assert await async_setup_component(hass, "automation", {"automation": [{
         "alias": "home", "use_blueprint": {"path": "home/lg_man_hinh_chinh_khi_bat_tivi.yaml", "input": {"tv": TV, "cho_giay": 12, **(extra or {})}}}]})
     await hass.async_block_till_done()
@@ -78,3 +78,80 @@ async def test_other_app_id_can_be_set(hass, cmds):
     await _setup(hass, "off", {"app_id": "com.viet.livecam"})
     hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
     assert cmds[0]["payload"] == {"id": "com.viet.livecam"}
+
+
+YT = "youtube.leanback.v4"
+
+
+def _set(hass, app, state="on"):
+    hass.states.async_set(TV, state, {"app_id": app} if app is not None else {})
+
+
+async def _exit_to(hass, *apps, start=YT, extra=None):
+    """TV dang o `start` roi lan luot qua cac app_id trong `apps` (moi buoc cach nhau chua toi 2 s), sau do troi 3 s."""
+    await _setup(hass, "on", extra, {"app_id": start})
+    for a in apps:
+        _set(hass, a); await _settle(hass)
+    await _advance(hass, 3)
+
+
+async def test_leaving_a_managed_app_for_the_base_input_returns_home(hass, cmds):
+    await _exit_to(hass, "", "com.webos.app.hdmi1")                 # dung chuoi that do tren TV: app -> trong -> HDMI1
+    assert len(cmds) == 1 and cmds[0]["payload"] == {"id": "com.viet.home"}, cmds
+
+
+async def test_leaving_straight_to_livetv_also_returns_home(hass, cmds):
+    await _exit_to(hass, "com.webos.app.livetv")
+    assert len(cmds) == 1
+
+
+async def test_leaving_to_the_lg_home_screen_also_returns_home(hass, cmds):
+    await _exit_to(hass, "com.webos.app.home", start="com.ssiptv.app")
+    assert len(cmds) == 1
+
+
+async def test_switching_to_the_launcher_itself_does_not_loop(hass, cmds):
+    await _exit_to(hass, "com.viet.home")
+    assert cmds == [], "mo Man hinh chinh tu app khong duoc kich hoat lai chinh no"
+
+
+async def test_pressing_input_does_not_interrupt(hass, cmds):
+    await _exit_to(hass, "com.webos.app.inputmgr")
+    assert cmds == [], "nguoi dung dang chon nguon: dung chen vao"
+
+
+async def test_app_to_another_app_does_not_return_home(hass, cmds):
+    await _exit_to(hass, "com.viet.livecam")
+    assert cmds == []
+
+
+async def test_tv_switched_off_inside_an_app_sends_nothing(hass, cmds):
+    await _setup(hass, "on", None, {"app_id": YT})
+    _set(hass, None, "off"); await _settle(hass); await _advance(hass, 3)
+    assert cmds == []
+
+
+async def test_only_apps_in_the_managed_list_trigger_it(hass, cmds):
+    await _exit_to(hass, "com.webos.app.hdmi1", start="com.palmdts.devmode")
+    assert cmds == [], "Developer Mode khong nam trong danh sach: thoat no khong keo ve Man hinh chinh"
+
+
+async def test_exit_option_can_be_switched_off(hass, cmds):
+    await _exit_to(hass, "", "com.webos.app.hdmi1", extra={"khi_thoat_app": False})
+    assert cmds == []
+
+
+async def test_power_on_option_can_be_switched_off(hass, cmds):
+    await _setup(hass, "off", {"khi_bat_tv": False})
+    hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
+    assert cmds == []
+
+
+async def test_lg_home_button_is_left_alone_by_default(hass, cmds):
+    await _exit_to(hass, "com.webos.app.home", start="com.webos.app.hdmi1")      # tu nguon nen sang Home cua LG (khong phai app quan ly)
+    assert cmds == [], "mac dinh khong thay nut Home"
+
+
+async def test_lg_home_button_replaced_when_switched_on(hass, cmds):
+    await _exit_to(hass, "com.webos.app.home", start="com.webos.app.hdmi1", extra={"thay_nut_home": True})
+    assert len(cmds) == 1 and cmds[0]["payload"] == {"id": "com.viet.home"}
