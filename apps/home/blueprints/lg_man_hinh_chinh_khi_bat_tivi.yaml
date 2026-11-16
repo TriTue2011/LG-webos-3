@@ -74,7 +74,7 @@ blueprint:
         boolean: {}
     apps_quan_ly:
       name: App quản lý (thoát khỏi các app này thì về Màn hình chính)
-      description: "ID app. Không thêm `com.viet.home` (thoát Màn hình chính là để xem nguồn đang chạy)."
+      description: "Tick app cần quản lý (danh sách lấy từ chính tivi của bạn). Cần app khác thì gõ ID vào ô. Không thêm `com.viet.home` (thoát Màn hình chính là để xem nguồn đang chạy)."
       default:
         - youtube.leanback.v4
         - com.ssiptv.app
@@ -86,7 +86,28 @@ blueprint:
         - com.webos.app.miracast
         - com.webos.app.tvuserguide
       selector:
-        text: {multiple: true}
+        select:
+          multiple: true
+          custom_value: true
+          options:
+            - {value: youtube.leanback.v4, label: "YouTube AdFree (youtube.leanback.v4)"}
+            - {value: com.ssiptv.app, label: "SS IPTV (com.ssiptv.app)"}
+            - {value: com.viet.livecam, label: "Live Cam (com.viet.livecam)"}
+            - {value: com.viet.livecam.popup, label: "Live Cam (góc) (com.viet.livecam.popup)"}
+            - {value: com.webos.app.browser, label: "Trình duyệt web (com.webos.app.browser)"}
+            - {value: com.webos.app.photovideo, label: "Ảnh & Video (com.webos.app.photovideo)"}
+            - {value: com.webos.app.music, label: "Âm nhạc (com.webos.app.music)"}
+            - {value: com.webos.app.discovery, label: "LG Content Store (com.webos.app.discovery)"}
+            - {value: com.webos.app.miracast, label: "Screen Share (com.webos.app.miracast)"}
+            - {value: com.webos.app.tvuserguide, label: "Hướng dẫn sử dụng (com.webos.app.tvuserguide)"}
+            - {value: com.webos.app.multiview, label: "Xem đa kênh (com.webos.app.multiview)"}
+            - {value: com.webos.app.recordings, label: "Chương trình đã ghi (com.webos.app.recordings)"}
+            - {value: com.webos.app.scheduler, label: "Ứng dụng lập lịch ghi (com.webos.app.scheduler)"}
+            - {value: com.webos.app.tvguide, label: "Thông tin chương trình TV (com.webos.app.tvguide)"}
+            - {value: com.webos.app.voice, label: "Tìm kiếm (com.webos.app.voice)"}
+            - {value: com.webos.app.connectionwizard, label: "Trình kết nối thiết bị (com.webos.app.connectionwizard)"}
+            - {value: com.webos.app.notificationcenter, label: "Thông báo (com.webos.app.notificationcenter)"}
+            - {value: com.palmdts.devmode, label: "Developer Mode (com.palmdts.devmode)"}
     nguon_nen:
       name: ID các nguồn nền (nơi TV rơi về sau khi thoát app)
       default:
@@ -96,7 +117,18 @@ blueprint:
         - com.webos.app.externalinput.av1
         - com.webos.app.livetv
       selector:
-        text: {multiple: true}
+        select:
+          multiple: true
+          custom_value: true
+          options:
+            - {value: com.webos.app.livetv, label: "Chương trình phát (com.webos.app.livetv)"}
+            - {value: com.webos.app.hdmi1, label: "HDMI1 (com.webos.app.hdmi1)"}
+            - {value: com.webos.app.hdmi2, label: "HDMI2 (com.webos.app.hdmi2)"}
+            - {value: com.webos.app.hdmi3, label: "HDMI3 (com.webos.app.hdmi3)"}
+            - {value: com.webos.app.externalinput.av1, label: "AV (com.webos.app.externalinput.av1)"}
+            - {value: com.webos.app.externalinput.av2, label: "AV2 (com.webos.app.externalinput.av2)"}
+            - {value: com.webos.app.externalinput.component, label: "Component (com.webos.app.externalinput.component)"}
+            - {value: com.webos.app.externalinput.scart, label: "AV1 (com.webos.app.externalinput.scart)"}
 mode: parallel
 max: 5
 max_exceeded: silent
