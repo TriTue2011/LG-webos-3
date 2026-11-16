@@ -129,10 +129,11 @@ async def main():
                     async with s.get("http://127.0.0.1:9333/json/version") as r: await r.json(); break
                 except Exception: await asyncio.sleep(0.2)
 
-            async def open_page(query):
+            async def open_page(query, ua=None):
                 async with s.put("http://127.0.0.1:9333/json/new?about:blank") as r: tgt = await r.json()
                 ws = await s.ws_connect(tgt["webSocketDebuggerUrl"], max_msg_size=0); pg = Page(s, ws)
                 await pg.cmd("Page.enable"); await pg.cmd("Runtime.enable")
+                if ua: await pg.cmd("Emulation.setUserAgentOverride", userAgent=ua)
                 await pg.cmd("Page.addScriptToEvaluateOnNewDocument", source="window.__closed=0;window.close=function(){window.__closed++};")
                 await pg.cmd("Page.navigate", url="file://%s/index.html?%s" % (SRC, query))
                 return pg
@@ -155,7 +156,7 @@ async def main():
             ok("S1 mot camera -> MJPEG, khong get_states, khong nap hls.js, tieu de dung")
 
             # --- S2: camera thu hai cung muc -> chia doi man, o thu hai chi MJPEG
-            await pg.js("LiveCam.handle({cmd:'show',camera:'camera.bep',owner:'bep',priority:2,ttl:60,title:'Bep'})")
+            await pg.js("LiveCam.handle({cmd:'show',camera:'camera.bep',owner:'bep',priority:2,ttl:60,title:'Bep',max_cams:2})")
             await wait(lambda: ha.mjpeg.get("camera.bep") == 1, 10, "luong bep")
             assert await pg.js(tiles) == 2 and ha.mjpeg.get("camera.cua") == 1
             w = await pg.js("Array.prototype.map.call(document.querySelectorAll('.tile'),function(t){return t.style.width+'@'+t.style.left}).join('|')")
@@ -219,7 +220,7 @@ async def main():
             await pg.ws.close()
 
             # --- S11: mot lan mo mang nhieu viec (items): hai camera chia doi, mot launch duy nhat
-            items = json.dumps({"items": [{"cmd": "show", "camera": "camera.cua", "owner": "c1", "ttl": 30}, {"cmd": "show", "camera": "camera.bep", "owner": "c2", "ttl": 30}]})
+            items = json.dumps({"items": [{"cmd": "show", "camera": "camera.cua", "owner": "c1", "ttl": 30, "max_cams": 2}, {"cmd": "show", "camera": "camera.bep", "owner": "c2", "ttl": 30, "max_cams": 2}]})
             pg = await open_page("")
             await wait(lambda: pg.js("typeof LiveCam==='object'"), 5, "app nap")
             await pg.js("LiveCam.handle(%s)" % json.dumps(json.loads(items) | {"connect": {"url": "http://127.0.0.1:%d" % port, "token": "tok"}}))
@@ -300,6 +301,43 @@ async def main():
             ok("S14 8 camera: hiện 6, đổi trang sang 2 còn lại và đóng luồng cũ")
             await pg.js("LiveCam.handle({cmd:'clear'})")
             await wait(lambda: open_now() == 0 and ha.ws_open == 0, 5, "dong het")
+            await pg.ws.close()
+
+            # --- S15: Chromium cu (TV webOS 3 = Chrome 38): KHONG thu HLS fMP4 cua HA (chac chan hong, mat 15 s) -> thang MJPEG
+            CH38 = "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 WebAppManager"
+            n_cmd = len(ha.commands)
+            pg = await open_page("cmd=show&camera=camera.old&owner=old&priority=2&ttl=60&title=Old&" + base, ua=CH38)
+            await wait(lambda: pg.js("(function(){var i=document.querySelector('.tile img.frame:not(.hidden)');return !!i&&i.naturalWidth>0})()"), 10, "khung MJPEG tren Chrome 38 gia lap")
+            assert ha.mjpeg.get("camera.old") == 1 and "camera/stream" not in ha.commands[n_cmd:], ha.commands[n_cmd:]
+            ok("S15 Chromium cu: bo qua HLS fMP4 cua HA, vao MJPEG ngay (khong cho 15 s)")
+            await pg.js("LiveCam.handle({cmd:'clear'})"); await pg.ws.close()
+
+            # --- S16: camera co HLS truc tiep (go2rtc) hong -> roi ve duong qua HA -> MJPEG; HLS truc tiep khong can HA luc dau
+            n_cmd = len(ha.commands)
+            pg = await open_page("cmd=show&camera=camera.dir&hls=" + "http://127.0.0.1:%d/khong-co.m3u8" % port + "&owner=dir&priority=2&ttl=60&title=Dir&" + base)
+            await wait(lambda: pg.js("(function(){var i=document.querySelector('.tile img.frame:not(.hidden)');return !!i&&i.naturalWidth>0})()"), 25, "roi ve MJPEG sau khi HLS truc tiep hong")
+            assert ha.mjpeg.get("camera.dir") == 1, ha.mjpeg
+            ok("S16 HLS truc tiep hong -> tu roi ve duong qua HA -> MJPEG")
+            await pg.js("LiveCam.handle({cmd:'clear'})"); await pg.ws.close()
+
+            # --- S16b: o thu hai tro di KHONG dung HLS truc tiep (TV chi co mot bo giai ma): chi o dau co <video> src m3u8
+            pg = await open_page("cmd=show&camera=camera.h1&hls=" + "http://127.0.0.1:%d/a.m3u8" % port + "&owner=h1&priority=2&ttl=60&max_cams=2&" + base)
+            await wait(lambda: pg.js(tiles + "==1"), 8, "o 1")
+            await pg.js("LiveCam.handle({cmd:'show',camera:'camera.h2',hls:'http://127.0.0.1:%d/b.m3u8',owner:'h2',priority:2,ttl:60,max_cams:2})" % port)
+            await wait(lambda: pg.js(tiles + "==2"), 8, "o 2")
+            await asyncio.sleep(1.0)
+            n = await pg.js("(function(){var n=0,v=document.querySelectorAll('video');for(var i=0;i<v.length;i++){if(/\\.m3u8/.test(v[i].getAttribute('src')||''))n++}return n})()")
+            assert n <= 1, "chi toi da MOT <video> HLS truc tiep, co %s" % n
+            await wait(lambda: ha.mjpeg.get("camera.h2") == 1, 12, "o thu hai vao MJPEG qua HA")
+            ok("S16b o thu hai tro di khong dung HLS truc tiep, vao MJPEG")
+            await pg.js("LiveCam.handle({cmd:'clear'})"); await pg.ws.close()
+
+            # --- S17: chi co hls (khong camera), hong -> bao loi ro rang, khong mo ket noi HA
+            total = ha.ws_total
+            pg = await open_page("cmd=show&kind=camera&hls=" + "http://127.0.0.1:%d/khong-co.m3u8" % port + "&owner=chi&priority=2&ttl=60&title=Chi&" + base)
+            await wait(lambda: pg.js("(function(){var e=document.querySelector('.tile .error:not(.hidden)');return !!e&&e.textContent.indexOf('HLS truc tiep')>=0})()"), 20, "thong bao loi HLS truc tiep")
+            assert ha.ws_total == total, "hls hong khong can HA, khong duoc mo ket noi HA"
+            ok("S17 chi co HLS truc tiep hong -> bao loi ro, khong dong den HA")
             await pg.ws.close()
 
             # --- S10: anh tinh va chu nhieu lop khong can HA

@@ -29,10 +29,22 @@ blueprint:
               domain: media_player
         toi_da_camera:
           name: Số camera tối đa cùng lúc
-          description: "Lưới camera: 1 đến 9. TV LG webOS 3 (2016) yếu: đo thật cho thấy mỗi hình cập nhật vài lần/giây đã ngốn gần hết CPU, nên mặc định 2. Nhiều hơn thì đổi trang mỗi 5 giây."
-          default: 2
+          description: "Lưới camera: 1 đến 9. TV LG webOS 3 (2016) yếu: đo thật cho thấy mỗi hình cập nhật vài lần/giây đã ngốn gần hết CPU, nên mặc định 1 (một camera giải mã bằng phần cứng; mỗi camera thêm tốn ~+280% CPU). Nhiều hơn thì đổi trang mỗi 5 giây."
+          default: 1
           selector:
             number: {min: 1, max: 9, mode: box}
+        go2rtc_url:
+          name: Địa chỉ go2rtc (HLS trực tiếp cho camera đầu tiên)
+          description: "Ví dụ `http://192.168.1.10:1984`. TV webOS 3 KHÔNG phát được HLS fMP4 của Home Assistant, nhưng phát tốt HLS MPEG-TS của go2rtc bằng bộ giải mã phần cứng (đo trên tivi thật: ~136% CPU so với ~370% của MJPEG). Có địa chỉ này thì camera đầu tiên phát thẳng từ go2rtc. Để trống thì dùng MJPEG qua Home Assistant (nặng)."
+          default: ""
+          selector:
+            text: {}
+        go2rtc_ban_do:
+          name: Ánh xạ camera → tên luồng go2rtc (mỗi dòng `camera.x = ten-luong`)
+          description: "Camera không có dòng ở đây mà có tên dạng `camera.go2rtc_<ten_luong>` thì dùng `<ten-luong>` (đổi `_` thành `-`). Ví dụ `camera.go2rtc_cua_sub` → luồng `cua-sub`."
+          default: ""
+          selector:
+            text: {multiline: true}
         toi_da_the:
           name: Số thẻ tối đa cùng lúc
           default: 4
@@ -187,6 +199,15 @@ variables:
   tv: !input tv
   bat_tv: !input bat_tv
   toi_da_camera: !input toi_da_camera
+  go2rtc_base: !input go2rtc_url
+  go2rtc_map_text: !input go2rtc_ban_do
+  go2rtc_map: >-
+    {% set ns = namespace(d={}) %}
+    {% for ln in (go2rtc_map_text | default('', true)).splitlines() %}
+      {% set p = ln.split('=') %}
+      {% if p | count == 2 and p[0] | trim and p[1] | trim %}{% set ns.d = ns.d | combine({p[0] | trim: p[1] | trim}) %}{% endif %}
+    {% endfor %}
+    {{ ns.d }}
   toi_da_the: !input toi_da_the
   viec: !input viec
   cach_chon: !input cach_chon
@@ -232,7 +253,9 @@ variables:
         {% set cams = s.camera if s.camera is list else ([s.camera] if s.camera else []) %}
         {% for c in cams %}
           {% set ten = (s.tieu_de | default('', true)) or state_attr(c, 'friendly_name') or c %}
-          {% set ns.l = ns.l + [{'cmd': 'show', 'kind': 'camera', 'camera': c, 'owner': lop if cams | count == 1 else lop ~ '_' ~ loop.index, 'priority': uu, 'ttl': tg, 'title': ten, 'split': true}] %}
+          {% set src = go2rtc_map.get(c) or (c[14:] | replace('_', '-') if c.startswith('camera.go2rtc_') else '') %}
+          {% set hls = (go2rtc_base | trim | regex_replace('/+$', '') ~ '/api/stream.m3u8?src=' ~ src) if (go2rtc_base | trim and src) else '' %}
+          {% set ns.l = ns.l + [{'cmd': 'show', 'kind': 'camera', 'camera': c, 'owner': lop if cams | count == 1 else lop ~ '_' ~ loop.index, 'priority': uu, 'ttl': tg, 'title': ten, 'split': true} | combine({'hls': hls} if hls else {})] %}
         {% endfor %}
       {% elif kieu == 'the' %}
         {% set ds = s.cac_dong | default([], true) %}
@@ -244,7 +267,7 @@ variables:
         {% set ns.l = ns.l + [{'cmd': 'show', 'kind': 'video' if kieu == 'video' else 'image', 'url': s.nguon | default('', true), 'owner': lop, 'priority': uu, 'ttl': tg, 'loop': s.lap | default(false, true) | bool(false), 'title': s.tieu_de | default('', true)}] %}
       {% endif %}
     {% endfor %}
-    {{ ns.l | map('combine', {'max_cams': toi_da_camera | int(2), 'max_cards': toi_da_the | int(4)}) | list }}
+    {{ ns.l | map('combine', {'max_cams': toi_da_camera | int(1), 'max_cards': toi_da_the | int(4)}) | list }}
 action:
   - if: "{{ items | count > 0 }}"
     then:

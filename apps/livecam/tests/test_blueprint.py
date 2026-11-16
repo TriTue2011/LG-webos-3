@@ -48,7 +48,7 @@ def _items(cmds):
 
 async def test_one_camera_becomes_one_layer_with_friendly_title(hass, cmds):
     await _auto(hass, [{"ten": "Cửa", "khi": ["cua"], "kieu": "camera", "camera": ["camera.cua"], "thoi_gian": 20, "uu_tien": 3, "ten_lop": "nguoi_o_cua"}])
-    assert _items(cmds) == [{"cmd": "show", "kind": "camera", "camera": "camera.cua", "owner": "nguoi_o_cua", "priority": 3, "ttl": 20.0, "title": "Camera cửa", "split": True, "max_cams": 6, "max_cards": 4}]
+    assert _items(cmds) == [{"cmd": "show", "kind": "camera", "camera": "camera.cua", "owner": "nguoi_o_cua", "priority": 3, "ttl": 20.0, "title": "Camera cửa", "split": True, "max_cams": 1, "max_cards": 4}]
 
 
 async def test_two_cameras_go_in_ONE_launch_with_distinct_layers(hass, cmds):
@@ -116,3 +116,19 @@ async def test_info_card_with_a_single_entity_and_no_main_sensor(hass, cmds):
     await _auto(hass, [{"kieu": "the", "cac_dong": "sensor.nhiet_do", "ten_lop": "t"}])
     (card,) = _items(cmds)
     assert card["entities"] == ["sensor.nhiet_do"] and card["main_entity"] == "" and card["title"] == "Thông tin" and card["color"] == "red"
+
+
+async def test_go2rtc_hls_url_is_added_by_mapping_and_by_naming_convention(hass, cmds):
+    """Co dia chi go2rtc: camera co dong anh xa -> hls theo anh xa; camera.go2rtc_<ten_luong> -> theo quy uoc (_ doi thanh -); camera khac -> khong co hls."""
+    await _auto(hass, [{"ten": "Ba cam", "khi": ["cua"], "kieu": "camera", "camera": ["camera.cua", "camera.go2rtc_bep_sub", "camera.khac"], "ten_lop": "an_ninh"}],
+                extra={"go2rtc_url": "http://192.168.1.10:1984/", "go2rtc_ban_do": "camera.cua = cua-chinh\n  camera.sai dong khong hop le\n"})
+    it = _items(cmds)
+    by = {i["camera"]: i for i in it}
+    assert by["camera.cua"]["hls"] == "http://192.168.1.10:1984/api/stream.m3u8?src=cua-chinh", by["camera.cua"]
+    assert by["camera.go2rtc_bep_sub"]["hls"] == "http://192.168.1.10:1984/api/stream.m3u8?src=bep-sub", by["camera.go2rtc_bep_sub"]
+    assert "hls" not in by["camera.khac"], by["camera.khac"]
+
+
+async def test_no_go2rtc_url_means_no_hls_key_at_all(hass, cmds):
+    await _auto(hass, [{"kieu": "camera", "camera": ["camera.go2rtc_cua_sub"], "ten_lop": "a"}])
+    assert "hls" not in _items(cmds)[0]

@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "Live Cam 1.3.1";
+  var VERSION = "Live Cam 1.3.2";
   var sys = window.webOSSystem || window.PalmSystem || null;
   var stage = document.getElementById("stage");
   var tilesEl = document.getElementById("tiles");
@@ -181,9 +181,9 @@
     var ttl = Math.max(1, Math.ceil((layer.expires - now()) / 1000));
     function go(haClient) {
       if (t.dead) { return; }
-      t.player.play(layer, { ha: haClient, index: index, ttl: ttl }, function (err) { if (err && !t.dead) { showTileError(t, err.message || String(err)); } });
+      t.player.play(layer, { ha: haClient, index: index, ttl: ttl, withHa: function (ok, bad) { if (!t.dead) { withHa(ok, bad); } } }, function (err) { if (err && !t.dead) { showTileError(t, err.message || String(err)); } });
     }
-    if (layer.kind === "camera" && !/camera_proxy_stream|mjpe?g|action=stream|\.cgi/i.test(layer.url || "")) {
+    if (layer.kind === "camera" && !layer.hls && !/camera_proxy_stream|mjpe?g|action=stream|\.cgi/i.test(layer.url || "")) {
       withHa(go, function (err) { if (!t.dead) { showTileError(t, err.message || String(err)); } });
     } else {
       go(null);

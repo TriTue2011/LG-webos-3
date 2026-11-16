@@ -7,7 +7,11 @@
   var IMAGE_FRAME_MS = 8000;
   var STALL_CHECK_MS = 5000;
   var BLANK_GIF = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  var DIRECT_HLS_MS = 7000;        // HLS truc tiep (go2rtc...) len hinh sau ~2 s; khong cho 15 s nhu HLS qua HA
   var hlsLoading = null;
+  // Chromium cu (TV webOS 3 = Chrome 38): HLS fMP4 cua Home Assistant KHONG phat duoc (bao Loi video 4 / hls.js loi) va mat 15 s moi biet -> bo qua buoc nay,
+  // dung HLS truc tiep (MPEG-TS) hoac MJPEG. Do tren 49UH617T: HLS MPEG-TS ~ +70% mot loi, MJPEG ~ 370%.
+  var OLD_CHROME = (function () { var m = /Chrome\/(\d+)/.exec(navigator.userAgent || ""); return !!m && parseInt(m[1], 10) < 60; }());
 
   /* Nap hls.js khi that su can (phan lon TV phat HLS goc, khong can 240 KB nay). */
   function loadHls(cb) {
@@ -73,10 +77,28 @@
       });
     }
 
-    function hls(url, allowFallback) {
+    function hls(url, allowFallback, ms) {
       self.playHlsNative(url, gen, function () { ok("hls"); }, function () {
         self.playHlsJs(url, gen, function () { ok("hls.js"); }, function (why) {
           if (allowFallback) { mjpeg(); } else { fail("Khong phat duoc HLS tren TV nay (" + why + ")"); }
+        });
+      }, ms);
+    }
+
+    // Can Home Assistant (link HLS/MJPEG): da co thi dung luon, chua co thi mo ket noi luc nay.
+    function needHa(cb) {
+      if (opts.ha) { cb(); return; }
+      if (!opts.withHa) { fail("Chua ket noi Home Assistant"); return; }
+      opts.withHa(function (client) { if (gen !== self.gen) { return; } opts.ha = client; cb(); }, function (err) { fail((err && err.message) || "Khong ket noi duoc Home Assistant"); });
+    }
+    function viaHa() {
+      needHa(function () {
+        if (opts.index > 0 || spec.format === "mjpeg" || (OLD_CHROME && spec.format !== "hls")) { mjpeg(); return; }
+        opts.ha.hlsUrl(spec.camera, function (err, url) {
+          if (gen !== self.gen) { return; }
+          if (!err) { hls(url, spec.format !== "hls"); }
+          else if (spec.format !== "hls") { mjpeg(); }
+          else { fail("Khong lay duoc link HLS: " + (err.message || "khong ro")); }
         });
       });
     }
@@ -90,17 +112,19 @@
       if (/\.m3u8(\?|$)/i.test(spec.url)) { hls(spec.url, false); } else { self.playVideoUrl(spec.url, gen, !!spec.loop, function () { ok("video"); }, fail); }
     } else if (spec.url && /camera_proxy_stream|mjpe?g|action=stream|\.cgi/i.test(spec.url)) {
       self.playImage(spec.url, gen, function () { ok("mjpeg"); }, fail, IMAGE_FRAME_MS);
+    } else if (spec.hls && opts.index > 0) {
+      // TV chi co MOT bo giai ma video phan cung (do tren 49UH617T: 2-3 <video> HLS cung luc tranh nhau, cai tam dung, cai ve 0 giay) -> o thu hai tro di khong dung HLS truc tiep
+      if (spec.camera) { viaHa(); } else { fail("TV chi giai ma phan cung duoc mot luong HLS; o nay can them camera trong HA de dung MJPEG"); }
+    } else if (spec.hls && /^https?:/i.test(spec.hls)) {
+      // HLS truc tiep (vi du go2rtc .../api/stream.m3u8?src=ten): giai ma bang phan cung cua TV, khong qua HA. Hong thi (neu co camera) roi ve duong qua HA.
+      self.playHlsNative(spec.hls, gen, function () { ok("hls-direct"); }, function (why) {
+        if (!spec.camera) { fail("Khong phat duoc HLS truc tiep (" + why + ")"); return; }
+        self.playHlsJs(spec.hls, gen, function () { ok("hls.js"); }, function () { if (spec.format === "hls") { fail("Khong phat duoc HLS truc tiep (" + why + ")"); } else { viaHa(); } });
+      }, DIRECT_HLS_MS);
     } else if (!spec.camera) {
       fail("Chua chon camera");
-    } else if (opts.index > 0 || spec.format === "mjpeg") {
-      mjpeg();
     } else {
-      opts.ha.hlsUrl(spec.camera, function (err, url) {
-        if (gen !== self.gen) { return; }
-        if (!err) { hls(url, spec.format !== "hls"); }
-        else if (spec.format !== "hls") { mjpeg(); }
-        else { fail("Khong lay duoc link HLS: " + (err.message || "khong ro")); }
-      });
+      viaHa();
     }
   };
 
@@ -146,13 +170,13 @@
     }
   };
 
-  Player.prototype.playHlsNative = function (url, gen, onOk, onFail) {
+  Player.prototype.playHlsNative = function (url, gen, onOk, onFail, ms) {
     if (gen !== this.gen) { onFail("cancelled"); return; }
     var v = this.video;
     v.loop = false;
     show(v);
     v.src = url;
-    this.waitPlaying(gen, onOk, onFail, FIRST_FRAME_MS);
+    this.waitPlaying(gen, onOk, onFail, ms || FIRST_FRAME_MS);
   };
 
   Player.prototype.playHlsJs = function (url, gen, onOk, onFail) {

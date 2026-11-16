@@ -1,8 +1,8 @@
 "use strict";
 var assert = require("assert");
 var L = require("../src/js/layers.js");
-var T0 = 1000000, n = 0;
-function ok(name, fn) { fn(); n++; console.log("dat  " + name); }
+var T0 = 1000000, n = 0, failed = [];
+function ok(name, fn) { try { fn(); n++; console.log("dat  " + name); } catch (e) { failed.push(name); console.log("HONG " + name + "\n       " + String(e.message).split("\n")[0]); } }
 function owners(l, now) { return l.visible(now).map(function (x) { return x.owner; }); }
 
 ok("mot camera: hien dung camera do", function () {
@@ -15,14 +15,14 @@ ok("cung ten lop thi thay nhau, khac ten thi xep chong", function () {
   l.show({ owner: "y", camera: "camera.c" }, T0); assert.equal(l.size(), 2);
 });
 ok("hai camera cung muc chia doi man, moi nhat truoc", function () {
-  var l = new L.Layers(); l.show({ owner: "a", camera: "camera.a" }, T0); l.show({ owner: "b", camera: "camera.b" }, T0);
+  var l = new L.Layers(); l.show({ owner: "a", camera: "camera.a", max_cams: 2 }, T0); l.show({ owner: "b", camera: "camera.b", max_cams: 2 }, T0);
   assert.deepEqual(owners(l, T0), ["b", "a"]);
 });
-ok("mac dinh chi 2 camera cung luc (TV webOS 3 yeu: do that, xem layers.js), con lai doi trang", function () {
+ok("mac dinh chi 1 camera cung luc (TV webOS 3 yeu: do that, xem layers.js), con lai luan phien", function () {
   var l = new L.Layers(); for (var i = 0; i < 5; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i }, T0); }
-  var pages = [owners(l, 0), owners(l, 5000), owners(l, 10000)];
-  pages.forEach(function (pg) { assert.ok(pg.length >= 1 && pg.length <= 2, "moi trang toi da 2 camera: " + pg.length); });
-  assert.deepEqual(pages[0].concat(pages[1], pages[2]).sort(), ["c0", "c1", "c2", "c3", "c4"], "ba trang gop lai du ca 5, khong sot");
+  var pages = [owners(l, 0), owners(l, 5000), owners(l, 10000), owners(l, 15000), owners(l, 20000)];
+  pages.forEach(function (pg) { assert.ok(pg.length === 1, "moi trang dung 1 camera: " + pg.length); });
+  assert.deepEqual(pages[0].concat(pages[1], pages[2], pages[3], pages[4]).sort(), ["c0", "c1", "c2", "c3", "c4"], "nam trang gop lai du ca 5, khong sot");
 });
 ok("tam camera cung muc khi nang max_cams: TAT CA hien cung luc, moi nhat truoc", function () {
   var l = new L.Layers(); for (var i = 0; i < 5; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 6 }, T0); }
@@ -34,9 +34,15 @@ ok("vuot gioi han camera: chia trang, doi luot moi 5 giay, du ca ba, khong sot",
   assert.equal(p1.length, 3); assert.equal(p2.length, 3); assert.equal(p3.length, 2); assert.deepEqual(p4, p1);
   assert.deepEqual(p1.concat(p2, p3).sort(), ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7"]);
 });
-ok("mac dinh toi da 2 camera, nang len 6 duoc, tran cung 9", function () {
+ok("hls truc tiep: nhan trong parse, suy ra kind=camera, giu trong lop", function () {
+  var c = L.parseParams({ hls: "http://h:1984/api/stream.m3u8?src=cua-sub", cmd: "show", owner: "a" });
+  assert.equal(c.cmd, "show"); assert.equal(c.spec.hls, "http://h:1984/api/stream.m3u8?src=cua-sub");
+  var l = new L.Layers(), v = l.show(c.spec, T0); assert.equal(v.kind, "camera"); assert.equal(v.hls, c.spec.hls); assert.equal(v.camera, "");
+  var d = l.show({ owner: "b", camera: "camera.x", hls: "http://h/x.m3u8" }, T0); assert.equal(d.kind, "camera"); assert.equal(d.camera, "camera.x"); assert.equal(d.hls, "http://h/x.m3u8");
+});
+ok("mac dinh toi da 1 camera, nang len 6 duoc, tran cung 9", function () {
   var l = new L.Layers(); for (var i = 0; i < 12; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i }, T0); }
-  assert.equal(l.plan(0).cams.length, 2);
+  assert.equal(l.plan(0).cams.length, 1);
   var six = new L.Layers(); for (i = 0; i < 12; i++) { six.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 6 }, T0); }
   assert.equal(six.plan(0).cams.length, 6);
   var m = new L.Layers(); for (i = 0; i < 12; i++) { m.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 99 }, T0); }
@@ -44,7 +50,7 @@ ok("mac dinh toi da 2 camera, nang len 6 duoc, tran cung 9", function () {
 });
 ok("the thong tin: nhieu the cung luc, chung man voi camera", function () {
   var l = new L.Layers();
-  l.show({ owner: "cam1", camera: "camera.a" }, T0); l.show({ owner: "cam2", camera: "camera.b" }, T0);
+  l.show({ owner: "cam1", camera: "camera.a", max_cams: 2 }, T0); l.show({ owner: "cam2", camera: "camera.b", max_cams: 2 }, T0);
   l.show({ owner: "dien", kind: "card", card: { title: "Dien", main: "sensor.cong_suat" } }, T0); l.show({ owner: "nhiet", kind: "card", card: { title: "Nhiet do" } }, T0);
   var p = l.plan(T0); assert.equal(p.mode, "grid"); assert.equal(p.cams.length, 2); assert.equal(p.cards.length, 2);
   assert.equal(p.cards[0].owner, "nhiet", "the moi nhat truoc"); assert.equal(l.visible(T0).length, 4);
@@ -109,7 +115,7 @@ ok("ttl 0 van co tran 1 gio (khong bao gio o mai); ttl lon bi cat", function () 
   assert.equal(l.expire(T0 + 3600000).length, 2);
 });
 ok("release khong ten: go dung cac lop dang hien, giu lop duoi", function () {
-  var l = new L.Layers(); l.show({ owner: "a", camera: "camera.a", priority: 1 }, T0); l.show({ owner: "b", camera: "camera.b", priority: 2 }, T0); l.show({ owner: "c", camera: "camera.c", priority: 2 }, T0);
+  var l = new L.Layers(); l.show({ owner: "a", camera: "camera.a", priority: 1 }, T0); l.show({ owner: "b", camera: "camera.b", priority: 2, max_cams: 2 }, T0); l.show({ owner: "c", camera: "camera.c", priority: 2 }, T0);
   assert.equal(l.release("", T0).length, 2); assert.deepEqual(owners(l, T0), ["a"]);
 });
 ok("release/clear tren rong khong loi", function () { var l = new L.Layers(); assert.equal(l.release("x", T0).length, 0); assert.equal(l.release("", T0).length, 0); assert.equal(l.clear().length, 0); });
@@ -131,4 +137,4 @@ ok("tham so cu 1.0 (camera, timeout) van chay; lenh moi release/clear/connect", 
   assert.equal(L.parseParams({}).cmd, ""); assert.equal(L.parseParams(null).cmd, "");
   assert.equal(L.parseParams({ cmd: "show", camera: "camera.a", loop: "true", muted: "false" }).spec.loop, true);
 });
-console.log("layers: " + n + " dat");
+console.log("layers: " + n + " dat" + (failed.length ? ", " + failed.length + " HONG" : "")); if (failed.length) { process.exit(1); }

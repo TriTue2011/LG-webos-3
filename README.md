@@ -36,7 +36,7 @@ ares-device-info --device tv             # kiểm tra: phải in thông tin tivi
 ares-install --device tv dist/com.viet.home_1.1.1_all.ipk
 ares-launch  --device tv com.viet.home
 ```
-Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.1_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
+Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.2_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
 
 YouTube không quảng cáo (tuỳ chọn, bên thứ ba, không kèm trong repo): lấy gói `youtube.leanback.v4_*_all.ipk` từ bản phát hành chính thức của [webosbrew/youtube-webos](https://github.com/webosbrew/youtube-webos/releases), kiểm sha256 theo trang phát hành rồi `ares-install` như trên.
 
@@ -87,7 +87,9 @@ Chu kỳ 5 phút (mỗi lần chỉ mở một kết nối SSH ngắn tới tivi
 | 2 ô 1080p, 5 khung/giây mỗi ô | ~400% |
 | 4 và 6 ô (1080p hoặc 640×480), 5 khung/giây mỗi ô | ~470–480%, **vẫn nhận đủ 5 khung/giây mỗi ô** |
 
-**Kết luận:** chi phí tăng theo **số khung hình cập nhật mỗi giây**, rất ít theo số ô, và chạm trần rất sớm (vài khung/giây đã gần hết CPU). Vì vậy Live Cam mặc định chỉ **2 camera** (`max_cams`), và nên dùng luồng phụ độ phân giải thấp, tốc độ khung thấp. Phương pháp: ảnh JPEG tổng hợp (cùng kích thước ảnh camera thật: 1080p ~108 KB, 2688×1664 ~258 KB, 640×480 ~25 KB) nạp lại liên tục trong một app dò; **chưa đo** MJPEG/HLS thật từ Home Assistant (go2rtc ở đây không phát MJPEG), nên chi phí thật có thể khác.
+**Kết luận:** chi phí tăng theo **số khung hình cập nhật mỗi giây**, rất ít theo số ô, và chạm trần rất sớm (vài khung/giây đã gần hết CPU). Vì vậy Live Cam mặc định chỉ **1 camera** (`max_cams`). Phương pháp: ảnh JPEG tổng hợp (cùng kích thước ảnh camera thật: 1080p ~108 KB, 2688×1664 ~258 KB, 640×480 ~25 KB) nạp lại liên tục trong một app dò; **chưa đo** MJPEG/HLS thật từ Home Assistant (go2rtc ở đây không phát MJPEG), nên chi phí thật có thể khác.
+
+**Đường phát đúng cho tivi này: HLS MPEG-TS trực tiếp (go2rtc).** Đo thật: 1 camera 640×480 qua HLS MPEG-TS chỉ ~136% CPU tổng (nền ~85%) vì tivi giải mã bằng phần cứng, so với ~370% của MJPEG; hình lên sau ~2 giây. HLS fMP4 của Home Assistant **không phát được** trên tivi này. Tivi chỉ có **một** bộ giải mã phần cứng: 2–3 luồng `<video>` cùng lúc tranh nhau. Xem `apps/livecam/README.md`.
 
 **Thoát app không giải phóng bộ nhớ:** sau khi thoát YouTube bằng Exit, tiến trình của nó (~92 MB) vẫn nằm lại ít nhất 65 giây — webOS giữ app «gần đây» và chỉ dọn khi thiếu RAM. Lệnh đóng app (`system.launcher/close`) bị tivi từ chối (403) với khoá ghép nối thường. Màn hình chính vì vậy **tự đóng** sau khi mở app khác (nếu không, nó cũng nằm lại như một thẻ trong thanh chọn app).
 
@@ -101,4 +103,4 @@ Chu kỳ 5 phút (mỗi lần chỉ mở một kết nối SSH ngắn tới tivi
 - Màn hình chính tự mở khi bật tivi thật và khi thoát app thật; app còn sau khi tắt/rút điện *khi có bộ canh*.
 - Mở **Cài đặt** của LG bằng `applicationManager/launch` từ xa (không thấy đổi app tiền cảnh).
 - Lưu ý đóng gói: `ares-install` chỉ nhận gói do `ares-package` tạo; mọi `build.sh`/`build_ipk.sh` ở đây dùng `ares-package` (bản đầu của Live Cam đóng tay bằng `ar` bị tivi từ chối, đã thay).
-- Live Cam phát camera trên tivi thật; gói `popup` (kiểu cửa sổ `overlay` không có trong tài liệu LG).
+- Hình Live Cam nhìn thấy trên màn hình (số liệu phát lấy từ trình phát qua báo cáo gỡ lỗi, không phải ảnh chụp); gói `popup` (kiểu cửa sổ `overlay` không có trong tài liệu LG).

@@ -1,4 +1,4 @@
-# Live Cam 1.3.1 cho TV LG webOS — màn hình như màn Dosen: nhiều camera + nhiều thẻ cùng lúc
+# Live Cam 1.3.2 cho TV LG webOS — màn hình như màn Dosen: nhiều camera + nhiều thẻ cùng lúc
 
 Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm các «việc»; việc có **loại** (camera / thẻ / ảnh / video / chữ), **mức ưu tiên** 1–4, **thời gian giữ**, **tên lớp**. TV 49 inch hiển thị **nhiều camera trực tiếp và nhiều thẻ cùng lúc**.
 
@@ -8,7 +8,7 @@ Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm 
 | Khác tên lớp | xếp chồng |
 | Ưu tiên cao hơn | luôn ở trên |
 | Cùng mức | việc đến sau đè lên |
-| Camera + thẻ cùng mức trên cùng | **đứng chung màn**: lưới camera (1→1×1, 2→2×1, 3→2+1, 4→2×2, 5→3+2, 6→3×2…, tối đa 9, **mặc định 2** vì tivi webOS 3 yếu (xem số đo ở README gốc); `max_cams`) bên trái, thẻ xếp dọc bên phải (mặc định 4; `max_cards`); chỉ camera thì lưới chiếm cả màn, chỉ thẻ thì thẻ chiếm cả màn. Nhiều hơn giới hạn thì đổi trang mỗi 5 giây |
+| Camera + thẻ cùng mức trên cùng | **đứng chung màn**: lưới camera (1→1×1, 2→2×1, 3→2+1, 4→2×2, 5→3+2, 6→3×2…, tối đa 9, **mặc định 1** vì tivi webOS 3 chỉ có MỘT bộ giải mã phần cứng (xem số đo ở README gốc); `max_cams`) bên trái, thẻ xếp dọc bên phải (mặc định 4; `max_cards`); chỉ camera thì lưới chiếm cả màn, chỉ thẻ thì thẻ chiếm cả màn. Nhiều hơn giới hạn thì đổi trang mỗi 5 giây |
 | Việc mới nhất là ảnh / video / chữ | hiện một mình, che camera và thẻ |
 | Hết hạn hoặc bấm Back | về lớp dưới |
 | Hết sạch | app tự đóng, TV trở lại nội dung đang xem |
@@ -17,7 +17,7 @@ Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm 
 ## Cài
 
 ```
-ares-install --device tv com.viet.livecam_1.3.1_all.ipk
+ares-install --device tv com.viet.livecam_1.3.2_all.ipk
 ```
 
 Mở app từ danh sách app trên TV **một lần** để nhập địa chỉ HA + token. Nên tạo một người dùng HA riêng chỉ có quyền xem camera (token lưu dạng chữ trong bộ nhớ TV).
@@ -54,12 +54,19 @@ Mở app từ danh sách app trên TV **một lần** để nhập địa chỉ 
 node tests/test_layers.js            # luật lớp, lưới, thẻ (hàm thuần)
 node tests/test_cardfmt.js           # định dạng giá trị thẻ
 python3 tests/e2e_chrome.py          # Chrome thật + HA giả: lớp, chia đôi, đếm kết nối MJPEG/WS còn mở sau mỗi bước
-./build_ipk.sh 1.3.1                 # đóng gói gói đầy màn hình (com.viet.livecam)
-./build_ipk.sh 1.3.1 popup           # gói cửa sổ góc THỬ NGHIỆM (com.viet.livecam.popup, defaultWindowType=overlay)
+./build_ipk.sh 1.3.2                 # đóng gói gói đầy màn hình (com.viet.livecam)
+./build_ipk.sh 1.3.2 popup           # gói cửa sổ góc THỬ NGHIỆM (com.viet.livecam.popup, defaultWindowType=overlay)
 ```
 
 Chưa có: băng chuyền (`screen_carousel`), màn mặc định (đồng hồ) — app đóng thì TV trở lại nội dung đang xem.
 
 **Tương thích TV webOS 3 (Chromium 38):** toàn bộ mã `src/js` (trừ `lib/hls.min.js`, thư viện hls.js giấy phép Apache-2.0) qua kiểm cú pháp ES5 (acorn `ecmaVersion: 5`), không dùng CSS grid/biến/`vh`. Kiểm bằng Chrome 150 (không phải Chromium 38).
 
-**Chưa kiểm trên TV thật:** phát camera (HLS gốc của webOS đời cũ có thể không phát HLS fMP4 của HA; app tự chuyển MJPEG) và gói `popup` (kiểu cửa sổ `overlay` là mẹo không có trong tài liệu LG; TV có thể từ chối và hiện toàn màn hình).
+**Phát hình trên tivi webOS 3 (đo thật trên 49UH617T):**
+- HLS dạng fMP4 của Home Assistant **không phát được** (hình đen 15 giây rồi lỗi video 4). Trên Chromium ≤ 59 app **bỏ hẳn bước này** và dùng MJPEG, hoặc HLS trực tiếp nếu có.
+- **HLS MPEG-TS trực tiếp (go2rtc)** phát tốt bằng bộ giải mã phần cứng, hình lên sau ~2 giây, **tổng ~136% CPU** (nền ~85%) cho 1 camera 640×480, so với ~370% của MJPEG. Truyền `hls` cho camera đầu tiên: `{"cmd":"show","kind":"camera","camera":"camera.go2rtc_cua_sub","hls":"http://IP:1984/api/stream.m3u8?src=cua-sub"}`. Hỏng thì tự rơi về đường qua Home Assistant (MJPEG); chỉ có `hls` mà hỏng thì báo lỗi rõ.
+- **Chỉ ô đầu tiên** dùng HLS trực tiếp: 2–3 `<video>` cùng lúc tranh bộ giải mã (một cái tạm dừng, cái khác về 0 giây). Ô thứ hai trở đi là MJPEG (~+280% CPU mỗi ô), nên mặc định chỉ 1 camera, nhiều hơn thì luân phiên mỗi 5 giây.
+- Blueprint: điền `go2rtc_url` (và `go2rtc_ban_do` nếu tên không theo quy ước `camera.go2rtc_<ten_luong>` → `ten-luong`) để mỗi camera tự kèm `hls`.
+- Điều gì nhìn thấy trên màn hình chưa tự kiểm được: các số trên đọc từ trình phát qua báo cáo gỡ lỗi (thời gian phát chạy, `readyState` 4, bề ngang 640), không phải ảnh chụp.
+
+**Chưa kiểm:** gói `popup` (kiểu cửa sổ `overlay` không có trong tài liệu LG; TV có thể từ chối và hiện toàn màn hình).

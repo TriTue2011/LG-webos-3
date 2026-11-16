@@ -10,9 +10,10 @@
   var MAX_TTL = 3600;          // tran cung: khong viec nao o lai qua 1 gio (tranh quen tat -> luong chay mai)
   var ROTATE_MS = 5000;
   var KINDS = { camera: 1, image: 1, video: 1, text: 1, card: 1 };
-  // Do tren 49UH617T (webOS 3, 4 loi ARM, Chromium 38 ve bang PHAN MEM): chi 1 o hinh cap nhat 5 khung/giay da tieu ~370% CPU (tran 400%), 15 khung/giay ~500%;
-  // 1 khung/giay ~140%. Chi phi tang theo SO KHUNG/GIAY, khong theo so o. Mac dinh 2 camera; CAMS_MAX 9 chi de ho tro TV manh hon, KHONG nen dung tren TV nay.
-  var CAMS_DEFAULT = 2, CAMS_MAX = 9;
+  // Do tren 49UH617T (webOS 3, 4 loi ARM, Chromium 38 ve bang PHAN MEM, MOT bo giai ma video phan cung):
+  //   HLS MPEG-TS truc tiep (go2rtc) 1 camera: tong ~136% CPU (+~50%); MJPEG moi camera them: ~+280%; 2-3 <video> cung luc tranh bo giai ma.
+  // => mac dinh 1 camera cung luc (nhieu hon thi luan phien moi 5 s). CAMS_MAX 9 chi de ho tro TV manh hon, KHONG nen dung tren TV nay.
+  var CAMS_DEFAULT = 1, CAMS_MAX = 9;
   var CARDS_DEFAULT = 4, CARDS_MAX = 8;
   var ENTITY_RE = /^[a-z_]+\.[a-z0-9_]+$/;
 
@@ -55,7 +56,7 @@
 
   /* Them / thay mot viec. spec: {owner, kind, priority, ttl (giay, 0 = den khi bi go), camera, url, title, text, loop, split, format, muted}. */
   Layers.prototype.show = function (spec, now) {
-    var kind = KINDS[spec.kind] ? spec.kind : (spec.camera ? "camera" : (spec.card ? "card" : spec.text ? "text" : (/\.(mp4|m3u8|webm|mkv|ts)(\?|$)/i.test(spec.url || "") ? "video" : "image")));
+    var kind = KINDS[spec.kind] ? spec.kind : ((spec.camera || spec.hls) ? "camera" : (spec.card ? "card" : spec.text ? "text" : (/\.(mp4|m3u8|webm|mkv|ts)(\?|$)/i.test(spec.url || "") ? "video" : "image")));
     var owner = String(spec.owner || "") || kind;
     var ttl = Number(spec.ttl);
     ttl = isNaN(ttl) || ttl <= 0 ? 0 : Math.min(ttl, MAX_TTL);
@@ -66,6 +67,7 @@
       ttl: ttl,
       camera: spec.camera ? String(spec.camera) : "",
       url: spec.url ? String(spec.url) : "",
+      hls: spec.hls ? String(spec.hls) : "",
       title: spec.title ? String(spec.title) : "",
       text: spec.text ? String(spec.text) : "",
       card: spec.card ? normalizeCard(spec.card) : null,
@@ -196,14 +198,14 @@
       return out;
     }
     var asCard = p.kind === "card" || p.card || p.main_entity || p.entities || p.rows;
-    if (p.camera || p.url || p.text || asCard || cmd === "show") {
+    if (p.camera || p.url || p.hls || p.text || asCard || cmd === "show") {
       out.cmd = "show";
       out.spec = {
         owner: p.owner || p.layer || "",
         kind: p.kind || "",
         priority: p.priority,
         ttl: p.ttl !== undefined && p.ttl !== "" ? p.ttl : p.timeout,
-        camera: p.camera, url: p.url, title: p.title, text: p.text,
+        camera: p.camera, url: p.url, hls: p.hls, title: p.title, text: p.text,
         card: asCard ? (p.card || { title: p.title, main: p.main_entity || p.main, value: p.value, caption: p.caption, color: p.color, entities: p.entities, rows: p.rows }) : null,
         max_cams: p.max_cams, max_cards: p.max_cards, corner: p.corner, size: p.size,
         loop: String(p.loop) === "true", split: String(p.split) !== "false",
