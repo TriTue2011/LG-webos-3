@@ -14,6 +14,7 @@ blueprint:
     **Cần:** TV đã thêm vào HA bằng tích hợp **LG webOS TV** (dịch vụ `webostv.command`); app đã cài và đã nhập địa chỉ HA + token một lần trong màn cài đặt của app (nên dùng một người dùng HA riêng chỉ có quyền xem camera). TV đang tắt thì bật «Bật TV nếu đang tắt» (cần TV bật được từ xa trong tích hợp).
   domain: automation
   author: TriTue2011
+  source_url: https://github.com/TriTue2011/Blueprint/blob/main/lg_livecam_man_hinh_nhieu_viec.yaml
   homeassistant:
     min_version: 2024.11.0
   input:
@@ -45,6 +46,30 @@ blueprint:
           default: ""
           selector:
             text: {multiline: true}
+        app_id:
+          name: Kiểu hiển thị
+          description: "**Toàn màn** = app Live Cam (chiếm cả màn, che nội dung đang xem). **Cửa sổ góc** = app `com.viet.livecam.popup` hiện nhỏ ở một góc, đè lên nội dung đang xem (thay màn camera Dosen khi có cảm biến). Cửa sổ góc dùng kiểu cửa sổ `overlay` của webOS: mẹo không có trong tài liệu LG, TV có thể từ chối và hiện toàn màn hình; cần cài thêm gói `com.viet.livecam.popup`."
+          default: com.viet.livecam
+          selector:
+            select:
+              options:
+                - {value: com.viet.livecam, label: "Toàn màn (Live Cam)"}
+                - {value: com.viet.livecam.popup, label: "Cửa sổ góc (Live Cam góc)"}
+        goc:
+          name: Góc hiển thị (chỉ cửa sổ góc)
+          default: br
+          selector:
+            select:
+              options:
+                - {value: tl, label: "Trên trái"}
+                - {value: tr, label: "Trên phải"}
+                - {value: bl, label: "Dưới trái"}
+                - {value: br, label: "Dưới phải"}
+        kich_thuoc:
+          name: Cỡ cửa sổ góc, % màn hình (chỉ cửa sổ góc)
+          default: 30
+          selector:
+            number: {min: 15, max: 60, mode: box}
         toi_da_the:
           name: Số thẻ tối đa cùng lúc
           default: 4
@@ -199,6 +224,9 @@ variables:
   tv: !input tv
   bat_tv: !input bat_tv
   toi_da_camera: !input toi_da_camera
+  app_id: !input app_id
+  goc: !input goc
+  kich_thuoc: !input kich_thuoc
   go2rtc_base: !input go2rtc_url
   go2rtc_map_text: !input go2rtc_ban_do
   go2rtc_map: >-
@@ -267,7 +295,9 @@ variables:
         {% set ns.l = ns.l + [{'cmd': 'show', 'kind': 'video' if kieu == 'video' else 'image', 'url': s.nguon | default('', true), 'owner': lop, 'priority': uu, 'ttl': tg, 'loop': s.lap | default(false, true) | bool(false), 'title': s.tieu_de | default('', true)}] %}
       {% endif %}
     {% endfor %}
-    {{ ns.l | map('combine', {'max_cams': toi_da_camera | int(1), 'max_cards': toi_da_the | int(4)}) | list }}
+    {% set extra = {'max_cams': toi_da_camera | int(1), 'max_cards': toi_da_the | int(4)} %}
+    {% if app_id == 'com.viet.livecam.popup' %}{% set extra = extra | combine({'corner': goc, 'size': kich_thuoc | int(30)}) %}{% endif %}
+    {{ ns.l | map('combine', extra) | list }}
 action:
   - if: "{{ items | count > 0 }}"
     then:
@@ -286,4 +316,4 @@ action:
           entity_id: !input tv
         data:
           command: com.webos.applicationManager/launch
-          payload: "{{ {'id': 'com.viet.livecam', 'params': {'items': items}} }}"
+          payload: "{{ {'id': app_id, 'params': {'items': items}} }}"

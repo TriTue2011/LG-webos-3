@@ -132,3 +132,18 @@ async def test_go2rtc_hls_url_is_added_by_mapping_and_by_naming_convention(hass,
 async def test_no_go2rtc_url_means_no_hls_key_at_all(hass, cmds):
     await _auto(hass, [{"kieu": "camera", "camera": ["camera.go2rtc_cua_sub"], "ten_lop": "a"}])
     assert "hls" not in _items(cmds)[0]
+
+
+async def test_popup_app_gets_corner_and_size_and_the_popup_app_id(hass, cmds):
+    await _auto(hass, [{"kieu": "camera", "camera": ["camera.cua"], "ten_lop": "cam"}], extra={"app_id": "com.viet.livecam.popup", "goc": "tl", "kich_thuoc": 25})
+    c = [x for x in cmds if "command" in x][0]
+    assert c["payload"]["id"] == "com.viet.livecam.popup"
+    it = c["payload"]["params"]["items"][0]
+    assert it["corner"] == "tl" and it["size"] == 25, it
+
+
+async def test_full_screen_app_never_gets_corner_or_size(hass, cmds):
+    await _auto(hass, [{"kieu": "camera", "camera": ["camera.cua"], "ten_lop": "cam"}], extra={"goc": "tl", "kich_thuoc": 25})
+    c = [x for x in cmds if "command" in x][0]
+    assert c["payload"]["id"] == "com.viet.livecam"
+    assert "corner" not in c["payload"]["params"]["items"][0] and "size" not in c["payload"]["params"]["items"][0]
