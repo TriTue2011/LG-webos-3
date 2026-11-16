@@ -52,7 +52,7 @@ async def test_tv_turning_on_launches_home_after_the_delay(hass, cmds):
     hass.states.async_set(TV, "on"); await _settle(hass)
     assert cmds == [], "chua den gio cho"
     await _advance(hass, 13)
-    assert len(cmds) == 1 and cmds[0]["command"] == "com.webos.applicationManager/launch" and cmds[0]["payload"] == {"id": "com.viet.home"}, cmds
+    assert len(cmds) == 1 and cmds[0]["command"] == "com.webos.applicationManager/launch" and cmds[0]["payload"]["id"] == "com.viet.home", cmds
 
 
 async def test_power_loss_then_on_also_counts(hass, cmds):
@@ -77,7 +77,7 @@ async def test_attribute_changes_while_on_do_not_relaunch(hass, cmds):
 async def test_other_app_id_can_be_set(hass, cmds):
     await _setup(hass, "off", {"app_id": "com.viet.livecam"})
     hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
-    assert cmds[0]["payload"] == {"id": "com.viet.livecam"}
+    assert cmds[0]["payload"]["id"] == "com.viet.livecam"
 
 
 YT = "youtube.leanback.v4"
@@ -97,7 +97,7 @@ async def _exit_to(hass, *apps, start=YT, extra=None):
 
 async def test_leaving_a_managed_app_for_the_base_input_returns_home(hass, cmds):
     await _exit_to(hass, "", "com.webos.app.hdmi1")                 # dung chuoi that do tren TV: app -> trong -> HDMI1
-    assert len(cmds) == 1 and cmds[0]["payload"] == {"id": "com.viet.home"}, cmds
+    assert len(cmds) == 1 and cmds[0]["payload"]["id"] == "com.viet.home", cmds
 
 
 async def test_leaving_straight_to_livetv_also_returns_home(hass, cmds):
@@ -148,3 +148,83 @@ async def test_pressing_the_lg_home_key_changes_nothing_we_can_see(hass, cmds):
     await _setup(hass, "on", None, {"app_id": "com.webos.app.livetv"})
     hass.states.async_set(TV, "on", {"app_id": "com.webos.app.livetv", "volume_level": 0.2}); await _settle(hass); await _advance(hass, 13)
     assert cmds == []
+
+
+async def _bat_with(hass, cmds, extra, setup=None):
+    await _setup(hass, "off", extra)
+    if setup:
+        setup()
+    hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
+    assert len(cmds) == 1, cmds
+    return cmds[0]["payload"]
+
+
+async def test_info_is_sent_with_the_launch_weather_lunar_and_hook(hass, cmds):
+    def setup():
+        hass.states.async_set("weather.nha", "clear-night", {"temperature": 27.0, "apparent_temperature": 31.0, "humidity": 86, "phrase": "Quang mây",
+                                                             "air_quality_category": "Vừa phải"})
+        hass.states.async_set("sensor.am_lich", "x", {"tiet_khi": "Lập đông", "lunar_holiday": "Không Có", "solar_holiday": "Ngày Thử"})
+    p = await _bat_with(hass, cmds, {"thoi_tiet": "weather.nha", "am_lich": "sensor.am_lich", "ha_url": "http://192.168.1.10:8123/", "webhook_id": "abc123"}, setup)
+    assert p["id"] == "com.viet.home"
+    info = p["params"]["info"]
+    assert isinstance(info, dict), "phai la dict that, khong phai chuoi: %r" % (info,)
+    assert info["w"] == {"t": 27.0, "feel": 31.0, "phrase": "Quang mây", "hum": 86, "aq": "Vừa phải"}, info
+    assert info["tiet_khi"] == "Lập đông" and info["holiday"] == "Ngày Thử", info
+    assert info["hook"] == "http://192.168.1.10:8123/api/webhook/abc123", info
+    import datetime as _d
+    n = dt_util.now(); assert info["day"] == "%d/%d" % (n.day, n.month), info
+
+
+async def test_missing_entities_just_omit_those_parts(hass, cmds):
+    p = await _bat_with(hass, cmds, None)
+    info = p["params"]["info"]
+    assert set(info) == {"day"}, info
+
+
+async def test_weather_without_a_phrase_attribute_falls_back_to_the_translated_state(hass, cmds):
+    def setup():
+        hass.states.async_set("weather.khac", "rainy", {"temperature": 22.5})
+    p = await _bat_with(hass, cmds, {"thoi_tiet": "weather.khac"}, setup)
+    w = p["params"]["info"]["w"]
+    assert w["t"] == 22.5 and w["phrase"] and w["feel"] is None and w["hum"] is None, w
+
+
+async def test_unavailable_weather_is_left_out(hass, cmds):
+    def setup():
+        hass.states.async_set("weather.nha", "unavailable", {})
+    p = await _bat_with(hass, cmds, {"thoi_tiet": "weather.nha"}, setup)
+    assert "w" not in p["params"]["info"]
+
+
+async def test_no_hook_when_only_one_of_url_and_id_is_given(hass, cmds):
+    p = await _bat_with(hass, cmds, {"ha_url": "http://h:8123"})
+    assert "hook" not in p["params"]["info"]
+
+
+async def test_toggle_webhook_turns_the_main_automation_off_and_on(hass, hass_client_no_auth, cmds):
+    """Nut «Tu ve day» tren TV POST webhook ?auto=on|off (khong token) -> bat/tat automation chinh; tat thi TV bat len KHONG mo Man hinh chinh."""
+    dst = hass.config.path("blueprints", "automation", "home")
+    os.makedirs(dst, exist_ok=True)
+    shutil.copy(BP, dst)
+    hass.states.async_set(TV, "off")
+    assert await async_setup_component(hass, "webhook", {})
+    assert await async_setup_component(hass, "automation", {"automation": [
+        {"id": "1", "alias": "TV về Màn hình chính", "use_blueprint": {"path": "home/lg_man_hinh_chinh_khi_bat_tivi.yaml", "input": {"tv": TV, "cho_giay": 12}}},
+        {"id": "2", "alias": "cong tac", "triggers": [{"trigger": "webhook", "webhook_id": "hook-xyz", "allowed_methods": ["POST"], "local_only": True}],
+         "actions": [{"choose": [
+             {"conditions": "{{ trigger.query.get('auto') == 'on' }}", "sequence": [{"action": "automation.turn_on", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]},
+             {"conditions": "{{ trigger.query.get('auto') == 'off' }}", "sequence": [{"action": "automation.turn_off", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]}]}]}]})
+    await hass.async_block_till_done()
+    assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on"
+    client = await hass_client_no_auth()
+    r = await client.post("/api/webhook/hook-xyz?auto=off", data="auto"); assert r.status == 200
+    await hass.async_block_till_done()
+    assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "off"
+    hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
+    assert cmds == [], "da TAT -> bat TV khong duoc mo Man hinh chinh"
+    r = await client.post("/api/webhook/hook-xyz?auto=on", data="auto"); assert r.status == 200
+    await hass.async_block_till_done()
+    assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on"
+    r = await client.post("/api/webhook/hook-xyz?auto=bay", data="auto"); assert r.status == 200
+    await hass.async_block_till_done()
+    assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on", "gia tri la khong doi gi"

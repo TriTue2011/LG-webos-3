@@ -1,10 +1,19 @@
 html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
 body { background: #0b0f14; background: -webkit-linear-gradient(315deg, #0b0f14 0%, #15202e 55%, #1d2b3d 100%); background: linear-gradient(135deg, #0b0f14 0%, #15202e 55%, #1d2b3d 100%);
   color: #fff; font-family: "LG Smart UI", "Helvetica Neue", Arial, sans-serif; position: relative; }
-#top { position: absolute; left: 120px; top: 56px; width: 1680px; height: 150px; }
-#clock { font-size: 104px; line-height: 104px; font-weight: bold; letter-spacing: 2px; }
-#date { font-size: 34px; margin-top: 10px; color: #aebbd0; }
-#hint { position: absolute; right: 0; top: 18px; font-size: 24px; color: #6f7f96; }
+#top { position: absolute; left: 120px; top: 36px; width: 1680px; height: 190px; }
+#clock { font-size: 88px; line-height: 88px; font-weight: bold; letter-spacing: 2px; }
+#date { font-size: 30px; margin-top: 6px; color: #aebbd0; }
+#lunar { font-size: 28px; margin-top: 6px; color: #e6c46b; white-space: nowrap; }
+#weather { position: absolute; right: 0; top: 4px; width: 760px; height: 150px; text-align: right; display: none; }
+#weather.on { display: block; }
+#wTemp { position: absolute; right: 0; top: 0; font-size: 104px; line-height: 104px; font-weight: bold; }
+#wBox { position: absolute; right: 250px; top: 8px; width: 500px; }
+#wTxt { font-size: 34px; color: #fff; }
+#wSub { font-size: 24px; margin-top: 6px; color: #aebbd0; }
+#wAge { font-size: 20px; margin-top: 8px; color: #6f7f96; }
+#wAge.old { color: #c98a3a; }
+#hint { position: absolute; left: 120px; bottom: 22px; font-size: 22px; color: #55657c; }
 .label { position: absolute; left: 120px; font-size: 26px; letter-spacing: 3px; text-transform: uppercase; color: #6f7f96; }
 #apps { position: absolute; left: 104px; top: 246px; width: 1740px; }
 #inputsLabel { top: 822px; }
@@ -19,6 +28,11 @@ body { background: #0b0f14; background: -webkit-linear-gradient(315deg, #0b0f14 
 .input .tile, .tile.input { height: 118px; }
 .tile.input .name { top: 0; bottom: 0; line-height: 106px; font-size: 34px; font-weight: bold; }
 .tile.input .ico { display: none; }
+.tile.ctl { background: #2a3a2e; }
+.tile.ctl.off { background: #3b2a2a; }
+.tile.ctl.focus { background: #3d5a45; }
+.tile.ctl.off.focus { background: #5a3d3d; }
+.tile.ctl .name { font-size: 28px; }
 .rowin { height: 150px; }
 #toast { position: absolute; left: 0; right: 0; bottom: 36px; margin: 0 auto; width: 900px; padding: 18px 24px; border-radius: 14px; background: rgba(0, 0, 0, 0.85); font-size: 30px; text-align: center; opacity: 0; transition: opacity 0.2s; }
 #toast.on { opacity: 1; }

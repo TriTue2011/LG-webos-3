@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var CFG = window.HOME_CONFIG, sys = window.webOSSystem || window.PalmSystem || null;
-  var VERSION = "Home 1.0.1";
+  var VERSION = "Home 1.1.0";
   var SVG = {
     play: '<rect x="8" y="14" width="48" height="36" rx="9"/><path d="M27 24l14 8-14 8z" fill="#fff"/>',
     cam: '<rect x="6" y="18" width="38" height="28" rx="5"/><path d="M44 28l14-8v24l-14-8z"/>',
@@ -31,7 +31,7 @@
     return "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#e8eef7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">' + body + "</svg>");
   }
   function makeTile(item, isInput) {
-    var t = el("div", "tile" + (isInput ? " input" : "")), ico = el("div", "ico"), img = el("img");
+    var t = el("div", "tile" + (isInput ? " input" : "") + (item.ctl ? " ctl" : "")), ico = el("div", "ico"), img = el("img");
     t.setAttribute("data-id", item.id);
     if (!isInput) {
       img.alt = "";
@@ -42,7 +42,8 @@
       } else { img.src = svgUrl(item.svg); }
       ico.appendChild(img); t.appendChild(ico);
     }
-    t.appendChild(el("div", "name", item.title));
+    t.appendChild(el("div", "name", item.ctl === "auto" ? autoLabel() : item.title));
+    if (item.ctl === "auto") { t.className += autoOn() ? "" : " off"; }
     return t;
   }
   function build() {
@@ -84,6 +85,8 @@
   var CLOSE_AFTER_MS = 2500, closeTimer = null;
   function open(item) {
     var done = false;
+    if (item.ctl === "exit") { close(); return; }
+    if (item.ctl === "auto") { toggleAuto(); return; }
     toast("Đang mở " + item.title + "…", 8000);
     clearTimeout(closeTimer);
     try {
@@ -101,6 +104,73 @@
       closeTimer = setTimeout(function () { close(); }, CLOSE_AFTER_MS);
     } catch (e) { toast("App này chỉ mở được trên tivi LG", 4000); }
   }
+  // ---------- thong tin tu Home Assistant (am lich + thoi tiet) va che do «tu ve day» ----------
+  // HA dua du lieu vao luc mo app (launchParams {info:{...}}) -> khong can token tren TV, khong giu ket noi. App nho lan gan nhat (localStorage).
+  // Ngay am lich LUON tinh tai cho (lunar.js) nen khong bao gio sai ngay; HA bo sung can chi / tiet khi / le.
+  var INFO_KEY = "home.info", AUTO_KEY = "home.auto", info = null, infoAt = 0;
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* bo qua */ } }
+  function parseParams(v) {
+    if (!v) { return null; }
+    if (typeof v === "string") { try { v = JSON.parse(v); } catch (e) { return null; } }
+    return (v && typeof v === "object") ? v : null;
+  }
+  function applyParams(v) {
+    var p = parseParams(v);
+    if (!p) { return; }
+    if (p.info && typeof p.info === "object") { info = p.info; infoAt = Date.now(); lsSet(INFO_KEY, JSON.stringify({ info: info, at: infoAt })); }
+    beacon("params", p);
+  }
+  function loadCachedInfo() {
+    var raw = lsGet(INFO_KEY); if (!raw) { return; }
+    try { var o = JSON.parse(raw); if (o && o.info) { info = o.info; infoAt = o.at || 0; } } catch (e) { /* bo qua */ }
+  }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function renderInfo() {
+    var d = new Date(), L = window.LunarCal ? window.LunarCal.solarToLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()) : null, parts = [];
+    if (L) {
+      parts.push("Âm lịch " + L.day + "/" + L.month + (L.leap ? " nhuận" : "") + " " + window.LunarCal.canChiYear(L.year));
+      parts.push("ngày " + window.LunarCal.canChiDay(d.getDate(), d.getMonth() + 1, d.getFullYear()));
+    }
+    var today = d.getDate() + "/" + (d.getMonth() + 1);                // tiet khi / le do HA cung cap chi dung khi con dung NGAY (khong de hien ngay cu)
+    if (info && info.day === today) { if (info.tiet_khi) { parts.push(info.tiet_khi); } if (info.holiday) { parts.push(info.holiday); } }
+    document.getElementById("lunar").textContent = parts.join(" · ");
+    var w = info && info.w, box = document.getElementById("weather");
+    if (w && w.t !== undefined && w.t !== null && w.t !== "") {
+      box.className = "on";
+      document.getElementById("wTemp").textContent = Math.round(w.t) + "°";
+      document.getElementById("wTxt").textContent = w.phrase || "";
+      var sub = []; if (w.feel !== undefined && w.feel !== null) { sub.push("cảm giác " + Math.round(w.feel) + "°"); }
+      if (w.hum !== undefined && w.hum !== null) { sub.push("ẩm " + Math.round(w.hum) + "%"); }
+      if (w.aq) { sub.push("không khí " + String(w.aq).toLowerCase()); }
+      document.getElementById("wSub").textContent = sub.join(" · ");
+      var age = infoAt ? Math.round((Date.now() - infoAt) / 60000) : null, a = document.getElementById("wAge");
+      if (age === null) { a.textContent = ""; a.className = ""; }
+      else { var t0 = new Date(infoAt); a.textContent = "cập nhật " + pad2(t0.getHours()) + ":" + pad2(t0.getMinutes()) + (age > 180 ? " (đã cũ)" : ""); a.className = age > 180 ? "old" : ""; }
+    } else { box.className = ""; }
+  }
+  function autoOn() { return lsGet(AUTO_KEY) !== "off"; }
+  function autoLabel() { return "Tự về đây: " + (autoOn() ? "BẬT" : "TẮT"); }
+  function refreshAutoTile() {
+    var i, j, t;
+    for (i = 0; i < rows.length; i++) {
+      for (j = 0; j < rows[i].items.length; j++) {
+        if (rows[i].items[j].ctl === "auto") {
+          t = rows[i].tiles[j]; t.getElementsByClassName("name")[0].textContent = autoLabel();
+          t.className = t.className.replace(" off", "") + (autoOn() ? "" : " off");
+        }
+      }
+    }
+  }
+  // «Tu ve day»: BAT = HA mo Man hinh chinh khi bat TV / thoat app; TAT = de TV chay mac dinh cua LG. Gui lenh bang webhook cua HA (khong can token);
+  // nut Home tren remote KHONG doi duoc (thanh Home cua LG la lop phu he thong, HA khong thay).
+  function toggleAuto() {
+    var next = !autoOn(), hook = info && info.hook;
+    if (!hook) { toast("Chưa có địa chỉ webhook từ Home Assistant (mở app bằng blueprint một lần)", 5000); return; }
+    lsSet(AUTO_KEY, next ? "on" : "off"); refreshAutoTile();
+    try { var x = new XMLHttpRequest(); x.open("POST", hook + (hook.indexOf("?") < 0 ? "?" : "&") + "auto=" + (next ? "on" : "off"), true); x.send("auto"); } catch (e) { /* bo qua */ }
+    toast(next ? "Đã BẬT: bật TV / thoát app sẽ về Màn hình chính" : "Đã TẮT: TV chạy mặc định của LG (nút Home vẫn là thanh app của LG)", 6000);
+  }
   function close() {
     try { if (sys && typeof sys.close === "function") { sys.close(); } else { window.close(); } } catch (e) { /* bo qua */ }
   }
@@ -110,9 +180,10 @@
       lastClock = s; document.getElementById("clock").textContent = s;
       document.getElementById("date").textContent = DAYS[d.getDay()] + ", " + d.getDate() + " tháng " + (d.getMonth() + 1) + ", " + d.getFullYear();
     }
+    renderInfo();
     clearTimeout(clockTimer); clockTimer = setTimeout(tickClock, 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50);
   }
-  function reset() { clearTimeout(closeTimer); want = 0; setFocus(0, 0); hideToast(); tickClock(); }
+  function reset(e) { clearTimeout(closeTimer); applyParams(e && e.detail ? e.detail : (sys && sys.launchParams)); want = 0; setFocus(0, 0); hideToast(); tickClock(); }
 
   document.addEventListener("keydown", function (e) {
     var k = e.keyCode;
@@ -123,6 +194,7 @@
   document.addEventListener("webOSRelaunch", reset);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) { tickClock(); } });
 
+  loadCachedInfo(); applyParams(sys && sys.launchParams);
   build(); setFocus(0, 0); tickClock();
   beacon("ready", { v: VERSION, tiles: document.getElementsByClassName("tile").length, rows: rows.length, palm: typeof window.PalmSystem, ws: typeof window.webOSSystem,
     bridge: typeof window.PalmServiceBridge, size: [window.innerWidth, window.innerHeight] });

@@ -12,13 +12,16 @@ window.HOME_CONFIG = {
     { id: "com.webos.app.music", title: "Âm nhạc", icon: "/usr/palm/applications/com.webos.app.music/icon.png", svg: "music" },
     { id: "com.webos.app.discovery", title: "LG Store", icon: "/mnt/otncabi/usr/palm/applications/com.webos.app.discovery/lgstore.png", svg: "store" },
     { id: "com.webos.app.miracast", title: "Chiếu màn hình", svg: "cast" },
-    { id: "com.palm.app.settings", title: "Cài đặt", svg: "gear" }
+    { id: "com.palm.app.settings", title: "Cài đặt", svg: "gear" },
+    { id: "com.palmdts.devmode", title: "Dev Mode", icon: "/media/cryptofs/apps/usr/palm/applications/com.palmdts.devmode/developer_80.png", svg: "gear" }
   ],
   inputs: [
     { id: "com.webos.app.hdmi1", title: "HDMI 1" },
     { id: "com.webos.app.hdmi2", title: "HDMI 2" },
     { id: "com.webos.app.hdmi3", title: "HDMI 3" },
-    { id: "com.webos.app.externalinput.av1", title: "AV" }
+    { id: "com.webos.app.externalinput.av1", title: "AV" },
+    { ctl: "auto", id: "ctl.auto", title: "Tự về đây" },
+    { ctl: "exit", id: "ctl.exit", title: "Thoát" }
   ],
   perRow: 6
 };

@@ -36,6 +36,32 @@ blueprint:
       default: 12
       selector:
         number: {min: 3, max: 60, mode: box, unit_of_measurement: s}
+    thoi_tiet:
+      name: Thời tiết (hiện trên Màn hình chính)
+      description: "Thực thể `weather.*` (ví dụ AccuWeather). Để trống thì không hiện khung thời tiết."
+      default: ""
+      selector:
+        entity:
+          domain: weather
+    am_lich:
+      name: Âm lịch (can chi, tiết khí, ngày lễ)
+      description: "Cảm biến có thuộc tính `tiet_khi`, `solar_holiday`, `lunar_holiday` (ví dụ `sensor.am_lich_hang_ngay` của tích hợp Lịch Việt). Ngày âm lịch luôn do TV tự tính; cảm biến chỉ bổ sung tiết khí và ngày lễ. Có thể để trống."
+      default: ""
+      selector:
+        entity:
+          domain: sensor
+    ha_url:
+      name: Địa chỉ Home Assistant (cho nút «Tự về đây»)
+      description: "Ví dụ `http://192.168.1.10:8123`. TV gửi lệnh bật/tắt bằng webhook, không cần token. Để trống thì nút báo chưa cấu hình."
+      default: ""
+      selector:
+        text: {}
+    webhook_id:
+      name: ID webhook của công tắc «Tự về đây»
+      description: "ID webhook của automation công tắc (xem README). Chuỗi dài, ngẫu nhiên; chỉ nhận từ mạng nội bộ."
+      default: ""
+      selector:
+        text: {}
     khi_bat_tv:
       name: ① Mở khi TV vừa bật
       default: true
@@ -76,6 +102,28 @@ max: 5
 max_exceeded: silent
 variables:
   tv_id: !input tv
+  weather_id: !input thoi_tiet
+  am_lich_id: !input am_lich
+  ha_url_in: !input ha_url
+  hook_id: !input webhook_id
+  # Du lieu dua cho Man hinh chinh luc mo (TV khong giu token, khong giu ket noi). Thieu thuc the thi bo qua phan do.
+  info_data: >-
+    {% set d = {'day': now().day ~ '/' ~ now().month} %}
+    {% if am_lich_id and states(am_lich_id) not in ['unknown', 'unavailable', 'none'] %}
+      {% set tk = state_attr(am_lich_id, 'tiet_khi') %}
+      {% if tk %}{% set d = d | combine({'tiet_khi': tk}) %}{% endif %}
+      {% set le = [state_attr(am_lich_id, 'lunar_holiday'), state_attr(am_lich_id, 'solar_holiday')] | reject('none') | reject('in', ['', 'Không Có']) | list %}
+      {% if le %}{% set d = d | combine({'holiday': le | join(', ')}) %}{% endif %}
+    {% endif %}
+    {% if weather_id and states(weather_id) not in ['unknown', 'unavailable', 'none'] %}
+      {% set wa = states[weather_id].attributes %}
+      {% set d = d | combine({'w': {'t': wa.temperature, 'feel': wa.apparent_temperature if wa.apparent_temperature is defined else none,
+                                    'phrase': wa.phrase if wa.phrase is defined and wa.phrase else state_translated(weather_id),
+                                    'hum': wa.humidity if wa.humidity is defined else none,
+                                    'aq': wa.air_quality_category if wa.air_quality_category is defined else none}}) %}
+    {% endif %}
+    {% if ha_url_in and hook_id %}{% set d = d | combine({'hook': ha_url_in.rstrip('/') ~ '/api/webhook/' ~ hook_id}) %}{% endif %}
+    {{ d }}
   khi_bat: !input khi_bat_tv
   khi_thoat: !input khi_thoat_app
   nen: !input nguon_nen
@@ -107,6 +155,8 @@ actions:
                   command: com.webos.applicationManager/launch
                   payload:
                     id: !input app_id
+                    params:
+                      info: "{{ info_data }}"
       - conditions: "{{ trigger.id == 'thoat' and khi_thoat }}"
         sequence:
           - delay: {seconds: 2}
@@ -123,3 +173,5 @@ actions:
                   command: com.webos.applicationManager/launch
                   payload:
                     id: !input app_id
+                    params:
+                      info: "{{ info_data }}"

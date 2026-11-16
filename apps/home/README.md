@@ -1,6 +1,6 @@
 # Màn hình chính (com.viet.home) — màn chọn app kiểu Android TV / Apple TV cho LG webOS 3
 
-Lưới app + hàng «Nguồn vào» (HDMI 1–3, AV) + đồng hồ/ngày. Mũi tên chọn, OK mở, Back thoát; chuột remote rê/bấm cũng chạy.
+Lưới app + hàng «Nguồn vào» (HDMI 1–3, AV) + nút «Tự về đây» / «Thoát» + đồng hồ, ngày, **âm lịch** (tính ngay trên tivi) và **thời tiết** (Home Assistant đưa vào khi mở app). Mũi tên chọn, OK mở, Back thoát; chuột remote rê/bấm cũng chạy.
 
 **Giới hạn của TV 49UH617T (webOS 3.0, Chromium 38, không root):**
 - Không thay được màn Home của LG hay nút Home trên remote (bấm Home chỉ hiện thanh app đè lên, `app_id` không đổi nên HA không thấy). Cách hiện màn này khi bật TV / thoát app: blueprint `blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml` (HA mở app).
@@ -11,14 +11,15 @@ Lưới app + hàng «Nguồn vào» (HDMI 1–3, AV) + đồng hồ/ngày. Mũi
 ## Đóng gói & cài
 ```
 export ARES_HOME=<thư mục HOME chứa .webos/tv/novacom-devices.json> ARES_BIN=<…/node_modules/.bin>
-./build.sh                       # -> com.viet.home_1.0.1_all.ipk
-HOME=$ARES_HOME $ARES_BIN/ares-install --device tv com.viet.home_1.0.1_all.ipk
+./build.sh                       # -> com.viet.home_1.1.0_all.ipk
+HOME=$ARES_HOME $ARES_BIN/ares-install --device tv com.viet.home_1.1.0_all.ipk
 ```
 `./build.sh http://IP:PORT/` đóng bản THỬ có «beacon» báo cáo (sự kiện nạp, icon, lỗi JS) về một bộ nghe HTTP — chỉ để gỡ lỗi trên TV thật.
 
 ## Kiểm thử
 ```
+node tests/test_lunar.js                 # âm lịch tính tại chỗ (13 ý)
 python3 tests/e2e_chrome.py [anh.png]   # Chrome thật 1920x1080 + PalmServiceBridge giả: điều hướng, launch, lỗi -101, Back, chuột (19 ý)
-tests/test_blueprint.py                 # chạy trong ảnh có Home Assistant (15 ý)
+tests/test_blueprint.py                 # chạy trong ảnh có Home Assistant (21 ý)
 ```
 Cú pháp: ES5 thuần (kiểm bằng acorn ecmaVersion 5), không CSS grid/biến/vh.

@@ -4,7 +4,7 @@ Bộ app và công cụ chạy trên **tivi LG webOS 3.x** (đã đo trên **49U
 
 | Thành phần | Làm gì |
 |---|---|
-| [`apps/home`](apps/home) — **Màn hình chính** (`com.viet.home`) | Màn chọn app kiểu Android TV / Apple TV: lưới app, nguồn vào HDMI/AV, đồng hồ. Kèm blueprint Home Assistant mở nó khi bật tivi hoặc thoát app. Tự đóng sau khi mở app khác. |
+| [`apps/home`](apps/home) — **Màn hình chính** (`com.viet.home`) | Màn chọn app kiểu Android TV / Apple TV: lưới app (có Developer Mode để bấm EXTEND), nguồn vào HDMI/AV, đồng hồ, **âm lịch** (tính ngay trên tivi) và **thời tiết** (Home Assistant đưa vào), nút **Thoát** và công tắc **Tự về đây**. Kèm blueprint Home Assistant mở nó khi bật tivi hoặc thoát app. Tự đóng sau khi mở app khác. |
 | [`apps/livecam`](apps/livecam) — **Live Cam** (`com.viet.livecam`) | Nhiều camera trực tiếp + nhiều thẻ thông tin cùng lúc trên tivi lớn, điều khiển từ Home Assistant. |
 | [`tools/giu_app_tv.sh`](tools/giu_app_tv.sh) — **bộ canh app** | Tivi hay «quên» app Dev Mode sau khi khởi động lại; bộ canh tự cài lại. |
 | [`dist/`](dist) | Gói `.ipk` đã đóng sẵn. |
@@ -33,7 +33,7 @@ ares-device-info --device tv             # kiểm tra: phải in thông tin tivi
 
 ### 3. Cài app
 ```sh
-ares-install --device tv dist/com.viet.home_1.0.1_all.ipk
+ares-install --device tv dist/com.viet.home_1.1.0_all.ipk
 ares-launch  --device tv com.viet.home
 ```
 Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.1_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
@@ -47,12 +47,18 @@ Cần tivi đã thêm vào Home Assistant bằng tích hợp **LG webOS TV** (th
 - **① TV vừa bật** (`off`/`unavailable` → `on`): đợi (mặc định 12 giây) rồi mở Màn hình chính.
 - **② Thoát một app trong danh sách «App quản lý»** (YouTube, SS IPTV, Live Cam…): khi TV rơi về nguồn nền (HDMI/truyền hình) thì mở lại Màn hình chính, trễ ~2 giây. Chuyển app sang app khác, bấm nút **Input**, hoặc chính Màn hình chính mở lên thì **không** bị chen vào.
 
-**Nút Home trên remote không thay được** (đo trên tivi thật): thanh chọn app của LG chỉ là lớp phủ đè lên app đang chạy, `app_id` không đổi nên Home Assistant không biết bạn vừa bấm Home. Muốn vào Màn hình chính từ thanh đó, chọn thẻ «Màn hình chính» (nằm đầu hàng). Làm được vì tivi báo `app_id` đổi và Home Assistant mở đè app; **không bắt được phím Back bên trong app khác** (cần root). Test trong Home Assistant thật: 15 tình huống (`apps/home/tests/test_blueprint.py`).
+**Nút Home trên remote không thay được** (đo trên tivi thật): thanh chọn app của LG chỉ là lớp phủ đè lên app đang chạy, `app_id` không đổi nên Home Assistant không biết bạn vừa bấm Home. Muốn vào Màn hình chính từ thanh đó, chọn thẻ «Màn hình chính». Làm được vì tivi báo `app_id` đổi và Home Assistant mở đè app; **không bắt được phím Back bên trong app khác** (cần root; nhiều app cũng phải Back vài lượt mới thoát hẳn, blueprint chỉ phản ứng khi app thật sự thoát).
+
+**Thời tiết và âm lịch trên Màn hình chính.** Home Assistant đưa dữ liệu vào lúc mở app (tham số mở app, đã kiểm trên tivi thật cả mở lạnh lẫn mở lại khi app đang chạy), tivi không giữ token và không giữ kết nối. App nhớ lần gần nhất (ghi «cập nhật HH:MM», «đã cũ» sau 3 giờ). **Ngày âm lịch luôn do tivi tự tính** (`app/js/lunar.js`, kiểm với giá trị Home Assistant, mùng 1 Tết 2024–2026, tháng nhuận 2023, quét 80 năm), nên không bao giờ sai ngày; cảm biến âm lịch chỉ bổ sung tiết khí và ngày lễ (chỉ hiện khi còn đúng ngày). Chọn `thoi_tiet` (thực thể `weather.*`) và `am_lich` (cảm biến có `tiet_khi`, `solar_holiday`, `lunar_holiday`) trong blueprint.
+
+**Công tắc «Tự về đây» (nút trên tivi):** BẬT = Home Assistant mở Màn hình chính khi bật tivi / thoát app; TẮT = tivi chạy mặc định của LG. Tivi gửi lệnh bằng **webhook** (không cần token): tạo automation có trigger `webhook` (`allowed_methods: [POST]`, `local_only: true`, ID dài ngẫu nhiên) gọi `automation.turn_on` / `automation.turn_off` cho automation blueprint theo `trigger.query.auto` (`on`/`off`), rồi điền `ha_url` + `webhook_id` vào blueprint (mẫu và test: `apps/home/tests/test_blueprint.py`). Nút **Thoát** đóng Màn hình chính về nguồn đang xem. Công tắc chỉ điều khiển phần tự động; **nút Home vẫn là thanh LG**.
 
 Chuỗi `app_id` đo thật: thoát bằng **Exit**: `youtube… → livetv` (không qua trạng thái trống); thoát Màn hình chính bằng **Back**: `com.viet.home → '' → nguồn nền`. **Back** trong YouTube chỉ lùi trang trong app (không thoát).
 
 ### 5. Chống mất app sau khi tắt / rút điện
 **Hiện tượng đã đo:** sau khi tivi khởi động lại, `ares-install --list` **rỗng** dù tệp app vẫn nằm trong `/media/developer/apps/...`: tivi mất *đăng ký*, không mất tệp. Cài lại bằng `ares-install` là hiện lại. Nguyên nhân gốc **chưa xác định** (mới quan sát một lần trên một tivi).
+
+**Đã gặp lại 16/11:** sau khi tivi tắt/bật nguội (HA thấy `off` → `unavailable` → `on` trong ~50 giây), `ares-install --list` thiếu YouTube dù tệp còn nguyên; Màn hình chính và Live Cam (cài sau) vẫn còn. Bộ canh phát hiện và cài lại YouTube trong 4 giây.
 
 **Cách chữa:** `tools/giu_app_tv.sh` chạy định kỳ trên một máy luôn bật cùng mạng (mini PC, NAS, Raspberry Pi, máy Home Assistant). Nó chỉ **cài lại gói còn thiếu** trong thư mục `ipk/` (tên `<id>_<phienban>_all.ipk`), không bao giờ gỡ app; tivi tắt thì im lặng bỏ qua; không liệt kê được thì không đoán.
 
@@ -86,7 +92,7 @@ Chu kỳ 5 phút (mỗi lần chỉ mở một kết nối SSH ngắn tới tivi
 **Thoát app không giải phóng bộ nhớ:** sau khi thoát YouTube bằng Exit, tiến trình của nó (~92 MB) vẫn nằm lại ít nhất 65 giây — webOS giữ app «gần đây» và chỉ dọn khi thiếu RAM. Lệnh đóng app (`system.launcher/close`) bị tivi từ chối (403) với khoá ghép nối thường. Màn hình chính vì vậy **tự đóng** sau khi mở app khác (nếu không, nó cũng nằm lại như một thẻ trong thanh chọn app).
 
 ## Kiểm thử
-- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 22 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 15 ý).
+- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 35 ý), `node tests/test_lunar.js` (13 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 21 ý).
 - `apps/livecam`: `node tests/test_layers.js`, `node tests/test_cardfmt.js`, `python3 tests/e2e_chrome.py`, `tests/test_blueprint.py`.
 - `tools/giu_app_tv.sh`: thử trên tivi thật: thư mục gói rỗng, đủ app, thiếu app (báo), cài lại thật, chạy lại (không còn thiếu), tivi tắt (im lặng).
 - Cú pháp ES5: `acorn` với `ecmaVersion: 5`.
