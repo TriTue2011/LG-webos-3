@@ -11,8 +11,8 @@ Lưới app + hàng «Nguồn vào» (HDMI 1–3, AV) + nút «Tự về đây»
 ## Đóng gói & cài
 ```
 export ARES_HOME=<thư mục HOME chứa .webos/tv/novacom-devices.json> ARES_BIN=<…/node_modules/.bin>
-./build.sh                       # -> com.viet.home_1.1.0_all.ipk
-HOME=$ARES_HOME $ARES_BIN/ares-install --device tv com.viet.home_1.1.0_all.ipk
+./build.sh                       # -> com.viet.home_1.1.1_all.ipk
+HOME=$ARES_HOME $ARES_BIN/ares-install --device tv com.viet.home_1.1.1_all.ipk
 ```
 `./build.sh http://IP:PORT/` đóng bản THỬ có «beacon» báo cáo (sự kiện nạp, icon, lỗi JS) về một bộ nghe HTTP — chỉ để gỡ lỗi trên TV thật.
 

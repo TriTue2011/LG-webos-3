@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var CFG = window.HOME_CONFIG, sys = window.webOSSystem || window.PalmSystem || null;
-  var VERSION = "Home 1.1.0";
+  var VERSION = "Home 1.1.1";
   var SVG = {
     play: '<rect x="8" y="14" width="48" height="36" rx="9"/><path d="M27 24l14 8-14 8z" fill="#fff"/>',
     cam: '<rect x="6" y="18" width="38" height="28" rx="5"/><path d="M44 28l14-8v24l-14-8z"/>',
@@ -168,7 +168,8 @@
     var next = !autoOn(), hook = info && info.hook;
     if (!hook) { toast("Chưa có địa chỉ webhook từ Home Assistant (mở app bằng blueprint một lần)", 5000); return; }
     lsSet(AUTO_KEY, next ? "on" : "off"); refreshAutoTile();
-    try { var x = new XMLHttpRequest(); x.open("POST", hook + (hook.indexOf("?") < 0 ? "?" : "&") + "auto=" + (next ? "on" : "off"), true); x.send("auto"); } catch (e) { /* bo qua */ }
+    // HAI webhook rieng (<id>-on / <id>-off): HA that khong cho tra tham so truy van trong mau (trigger.query), nen khong dung ?auto=
+    try { var x = new XMLHttpRequest(); x.open("POST", hook + (next ? "-on" : "-off"), true); x.send("auto"); } catch (e) { /* bo qua */ }
     toast(next ? "Đã BẬT: bật TV / thoát app sẽ về Màn hình chính" : "Đã TẮT: TV chạy mặc định của LG (nút Home vẫn là thanh app của LG)", 6000);
   }
   function close() {

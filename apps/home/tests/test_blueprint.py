@@ -210,21 +210,19 @@ async def test_toggle_webhook_turns_the_main_automation_off_and_on(hass, hass_cl
     assert await async_setup_component(hass, "webhook", {})
     assert await async_setup_component(hass, "automation", {"automation": [
         {"id": "1", "alias": "TV về Màn hình chính", "use_blueprint": {"path": "home/lg_man_hinh_chinh_khi_bat_tivi.yaml", "input": {"tv": TV, "cho_giay": 12}}},
-        {"id": "2", "alias": "cong tac", "triggers": [{"trigger": "webhook", "webhook_id": "hook-xyz", "allowed_methods": ["POST"], "local_only": True}],
+        {"id": "2", "alias": "cong tac", "triggers": [{"trigger": "webhook", "id": "on", "webhook_id": "hook-xyz-on", "allowed_methods": ["POST"], "local_only": True},
+                                                     {"trigger": "webhook", "id": "off", "webhook_id": "hook-xyz-off", "allowed_methods": ["POST"], "local_only": True}],
          "actions": [{"choose": [
-             {"conditions": "{{ trigger.query.get('auto') == 'on' }}", "sequence": [{"action": "automation.turn_on", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]},
-             {"conditions": "{{ trigger.query.get('auto') == 'off' }}", "sequence": [{"action": "automation.turn_off", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]}]}]}]})
+             {"conditions": [{"condition": "trigger", "id": "on"}], "sequence": [{"action": "automation.turn_on", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]},
+             {"conditions": [{"condition": "trigger", "id": "off"}], "sequence": [{"action": "automation.turn_off", "target": {"entity_id": "automation.tv_ve_man_hinh_chinh"}}]}]}]}]})
     await hass.async_block_till_done()
     assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on"
     client = await hass_client_no_auth()
-    r = await client.post("/api/webhook/hook-xyz?auto=off", data="auto"); assert r.status == 200
+    r = await client.post("/api/webhook/hook-xyz-off", data="auto"); assert r.status == 200
     await hass.async_block_till_done()
     assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "off"
     hass.states.async_set(TV, "on"); await _settle(hass); await _advance(hass, 13)
     assert cmds == [], "da TAT -> bat TV khong duoc mo Man hinh chinh"
-    r = await client.post("/api/webhook/hook-xyz?auto=on", data="auto"); assert r.status == 200
+    r = await client.post("/api/webhook/hook-xyz-on", data="auto"); assert r.status == 200
     await hass.async_block_till_done()
     assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on"
-    r = await client.post("/api/webhook/hook-xyz?auto=bay", data="auto"); assert r.status == 200
-    await hass.async_block_till_done()
-    assert hass.states.get("automation.tv_ve_man_hinh_chinh").state == "on", "gia tri la khong doi gi"
