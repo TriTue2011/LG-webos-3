@@ -105,11 +105,6 @@ async def test_leaving_straight_to_livetv_also_returns_home(hass, cmds):
     assert len(cmds) == 1
 
 
-async def test_leaving_to_the_lg_home_screen_also_returns_home(hass, cmds):
-    await _exit_to(hass, "com.webos.app.home", start="com.ssiptv.app")
-    assert len(cmds) == 1
-
-
 async def test_switching_to_the_launcher_itself_does_not_loop(hass, cmds):
     await _exit_to(hass, "com.viet.home")
     assert cmds == [], "mo Man hinh chinh tu app khong duoc kich hoat lai chinh no"
@@ -147,11 +142,9 @@ async def test_power_on_option_can_be_switched_off(hass, cmds):
     assert cmds == []
 
 
-async def test_lg_home_button_is_left_alone_by_default(hass, cmds):
-    await _exit_to(hass, "com.webos.app.home", start="com.webos.app.hdmi1")      # tu nguon nen sang Home cua LG (khong phai app quan ly)
-    assert cmds == [], "mac dinh khong thay nut Home"
 
-
-async def test_lg_home_button_replaced_when_switched_on(hass, cmds):
-    await _exit_to(hass, "com.webos.app.home", start="com.webos.app.hdmi1", extra={"thay_nut_home": True})
-    assert len(cmds) == 1 and cmds[0]["payload"] == {"id": "com.viet.home"}
+async def test_pressing_the_lg_home_key_changes_nothing_we_can_see(hass, cmds):
+    """Do tren TV that: bam Home chi hien thanh app de len tren, app_id van la app dang chay -> blueprint khong the (va khong co) nut Home."""
+    await _setup(hass, "on", None, {"app_id": "com.webos.app.livetv"})
+    hass.states.async_set(TV, "on", {"app_id": "com.webos.app.livetv", "volume_level": 0.2}); await _settle(hass); await _advance(hass, 13)
+    assert cmds == []

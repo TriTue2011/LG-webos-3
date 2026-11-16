@@ -4,7 +4,7 @@ Bộ app và công cụ chạy trên **tivi LG webOS 3.x** (đã đo trên **49U
 
 | Thành phần | Làm gì |
 |---|---|
-| [`apps/home`](apps/home) — **Màn hình chính** (`com.viet.home`) | Màn chọn app kiểu Android TV / Apple TV: lưới app, nguồn vào HDMI/AV, đồng hồ. Kèm blueprint Home Assistant mở nó khi bật tivi. |
+| [`apps/home`](apps/home) — **Màn hình chính** (`com.viet.home`) | Màn chọn app kiểu Android TV / Apple TV: lưới app, nguồn vào HDMI/AV, đồng hồ. Kèm blueprint Home Assistant mở nó khi bật tivi hoặc thoát app. Tự đóng sau khi mở app khác. |
 | [`apps/livecam`](apps/livecam) — **Live Cam** (`com.viet.livecam`) | Nhiều camera trực tiếp + nhiều thẻ thông tin cùng lúc trên tivi lớn, điều khiển từ Home Assistant. |
 | [`tools/giu_app_tv.sh`](tools/giu_app_tv.sh) — **bộ canh app** | Tivi hay «quên» app Dev Mode sau khi khởi động lại; bộ canh tự cài lại. |
 | [`dist/`](dist) | Gói `.ipk` đã đóng sẵn. |
@@ -33,10 +33,10 @@ ares-device-info --device tv             # kiểm tra: phải in thông tin tivi
 
 ### 3. Cài app
 ```sh
-ares-install --device tv dist/com.viet.home_1.0.0_all.ipk
+ares-install --device tv dist/com.viet.home_1.0.1_all.ipk
 ares-launch  --device tv com.viet.home
 ```
-Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.0_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
+Live Cam (tuỳ chọn): `ares-install --device tv dist/com.viet.livecam_1.3.1_all.ipk` (ô Live Cam trong Màn hình chính báo «chưa được cài» nếu bỏ qua bước này), mở app **một lần** để nhập địa chỉ Home Assistant + token (nên dùng một người dùng HA riêng chỉ có quyền xem camera). Chi tiết: [`apps/livecam/README.md`](apps/livecam/README.md).
 
 YouTube không quảng cáo (tuỳ chọn, bên thứ ba, không kèm trong repo): lấy gói `youtube.leanback.v4_*_all.ipk` từ bản phát hành chính thức của [webosbrew/youtube-webos](https://github.com/webosbrew/youtube-webos/releases), kiểm sha256 theo trang phát hành rồi `ares-install` như trên.
 
@@ -45,10 +45,11 @@ Xem app đã cài: `ares-install --device tv --list`. Gỡ: `ares-install --devi
 ### 4. Bật tivi / thoát app là về Màn hình chính (tuỳ chọn)
 Cần tivi đã thêm vào Home Assistant bằng tích hợp **LG webOS TV** (thực thể có thuộc tính `app_id`). Chép [`apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml`](apps/home/blueprints/lg_man_hinh_chinh_khi_bat_tivi.yaml) vào `config/blueprints/automation/`, tạo automation từ blueprint, chọn tivi.
 - **① TV vừa bật** (`off`/`unavailable` → `on`): đợi (mặc định 12 giây) rồi mở Màn hình chính.
-- **② Thoát một app trong danh sách «App quản lý»** (YouTube, SS IPTV, Live Cam, trình duyệt…): khi TV rơi về nguồn nền (HDMI/truyền hình/Home của LG) thì mở lại Màn hình chính, trễ ~2 giây. Chuyển app sang app khác, bấm nút **Input**, hoặc chính Màn hình chính mở lên thì **không** bị chen vào.
-- **③ Thay nút Home của LG** (mặc định **tắt**): bật thì bấm Home trên remote mở Màn hình chính. Mở Cài đặt của LG từ Màn hình chính chưa xác nhận được, nên để tắt; nút ⚙ trên remote vẫn vào Cài đặt.
+- **② Thoát một app trong danh sách «App quản lý»** (YouTube, SS IPTV, Live Cam…): khi TV rơi về nguồn nền (HDMI/truyền hình) thì mở lại Màn hình chính, trễ ~2 giây. Chuyển app sang app khác, bấm nút **Input**, hoặc chính Màn hình chính mở lên thì **không** bị chen vào.
 
-Làm được vì tivi báo `app_id` đổi và Home Assistant mở đè app; **không bắt được phím Back bên trong app khác** (cần root). Test trong Home Assistant thật: 17 tình huống (`apps/home/tests/test_blueprint.py`). Chưa kiểm: màn Home của LG báo `app_id` nào (mặc định `com.webos.app.home`, chỉnh trong blueprint).
+**Nút Home trên remote không thay được** (đo trên tivi thật): thanh chọn app của LG chỉ là lớp phủ đè lên app đang chạy, `app_id` không đổi nên Home Assistant không biết bạn vừa bấm Home. Muốn vào Màn hình chính từ thanh đó, chọn thẻ «Màn hình chính» (nằm đầu hàng). Làm được vì tivi báo `app_id` đổi và Home Assistant mở đè app; **không bắt được phím Back bên trong app khác** (cần root). Test trong Home Assistant thật: 15 tình huống (`apps/home/tests/test_blueprint.py`).
+
+Chuỗi `app_id` đo thật: thoát bằng **Exit**: `youtube… → livetv` (không qua trạng thái trống); thoát Màn hình chính bằng **Back**: `com.viet.home → '' → nguồn nền`. **Back** trong YouTube chỉ lùi trang trong app (không thoát).
 
 ### 5. Chống mất app sau khi tắt / rút điện
 **Hiện tượng đã đo:** sau khi tivi khởi động lại, `ares-install --list` **rỗng** dù tệp app vẫn nằm trong `/media/developer/apps/...`: tivi mất *đăng ký*, không mất tệp. Cài lại bằng `ares-install` là hiện lại. Nguyên nhân gốc **chưa xác định** (mới quan sát một lần trên một tivi).
@@ -62,12 +63,30 @@ cp tools/giu_app_tv.env.example /opt/tv-apps/giu_app_tv.env && chmod 600 /opt/tv
 sudo cp tools/giu-app-tv.service tools/giu-app-tv.timer /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now giu-app-tv.timer
 ```
-Nhật ký: `/opt/tv-apps/giu_app_tv.log`. Dự kiến sau khi tivi bật lại, app hiện lại trong vài phút (chu kỳ 2 phút; **chưa đo** với bộ hẹn giờ thật).
+Chu kỳ 5 phút (mỗi lần chỉ mở một kết nối SSH ngắn tới tivi khi cổng 9922 đang mở). Nhật ký: `/opt/tv-apps/giu_app_tv.log`. Dự kiến sau khi tivi bật lại, app hiện lại trong vài phút (chu kỳ 5 phút; **chưa đo** với bộ hẹn giờ thật).
 
 **Bộ canh KHÔNG làm được:** gia hạn phiên Developer Mode (phải bấm EXTEND trên tivi), và cài lại khi Developer Mode đã tắt hoặc phiên đã hết (cổng 9922 đóng).
 
+## Tài nguyên của tivi — số đo thật (49UH617T, 1,1 GB RAM, 4 lõi ARM, Chromium 38 vẽ bằng **phần mềm**)
+
+Đo bằng `ares-novacom --run` đọc `/proc` (CPU theo tiến trình trong 5 giây; 400% = đầy cả 4 lõi). Trạng thái nền đang xem truyền hình: CPU ~85–100% của một lõi (chủ yếu `tvservice` ~48%), bộ nhớ trống chỉ ~50–100 MB (có swap), tải trung bình đứng ở ~15,7 (mức nền của tivi này, không phải do app).
+
+| Tình huống | Kết quả đo |
+|---|---|
+| **Màn hình chính** đang mở (đứng yên) | ~+30 MB RAM, CPU gần như không đáng kể |
+| YouTube chạy | ~190% CPU |
+| 1 ô 640×480 nạp lại **1 khung/giây** | ~+140% CPU |
+| 1 ô 640×480 **5** khung/giây | ~370% |
+| 1 ô 640×480 **15** khung/giây | ~500% (chạm trần 400%) |
+| 2 ô 1080p, 5 khung/giây mỗi ô | ~400% |
+| 4 và 6 ô (1080p hoặc 640×480), 5 khung/giây mỗi ô | ~470–480%, **vẫn nhận đủ 5 khung/giây mỗi ô** |
+
+**Kết luận:** chi phí tăng theo **số khung hình cập nhật mỗi giây**, rất ít theo số ô, và chạm trần rất sớm (vài khung/giây đã gần hết CPU). Vì vậy Live Cam mặc định chỉ **2 camera** (`max_cams`), và nên dùng luồng phụ độ phân giải thấp, tốc độ khung thấp. Phương pháp: ảnh JPEG tổng hợp (cùng kích thước ảnh camera thật: 1080p ~108 KB, 2688×1664 ~258 KB, 640×480 ~25 KB) nạp lại liên tục trong một app dò; **chưa đo** MJPEG/HLS thật từ Home Assistant (go2rtc ở đây không phát MJPEG), nên chi phí thật có thể khác.
+
+**Thoát app không giải phóng bộ nhớ:** sau khi thoát YouTube bằng Exit, tiến trình của nó (~92 MB) vẫn nằm lại ít nhất 65 giây — webOS giữ app «gần đây» và chỉ dọn khi thiếu RAM. Lệnh đóng app (`system.launcher/close`) bị tivi từ chối (403) với khoá ghép nối thường. Màn hình chính vì vậy **tự đóng** sau khi mở app khác (nếu không, nó cũng nằm lại như một thẻ trong thanh chọn app).
+
 ## Kiểm thử
-- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 19 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 17 ý).
+- `apps/home`: `python3 tests/e2e_chrome.py` (Chrome thật 1920×1080 + `PalmServiceBridge` giả, 22 ý), `tests/test_blueprint.py` (cần Home Assistant + `pytest-homeassistant-custom-component`, 15 ý).
 - `apps/livecam`: `node tests/test_layers.js`, `node tests/test_cardfmt.js`, `python3 tests/e2e_chrome.py`, `tests/test_blueprint.py`.
 - `tools/giu_app_tv.sh`: thử trên tivi thật: thư mục gói rỗng, đủ app, thiếu app (báo), cài lại thật, chạy lại (không còn thiếu), tivi tắt (im lặng).
 - Cú pháp ES5: `acorn` với `ecmaVersion: 5`.

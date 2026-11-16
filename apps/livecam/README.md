@@ -1,4 +1,4 @@
-# Live Cam 1.3 cho TV LG webOS — màn hình như màn Dosen: nhiều camera + nhiều thẻ cùng lúc
+# Live Cam 1.3.1 cho TV LG webOS — màn hình như màn Dosen: nhiều camera + nhiều thẻ cùng lúc
 
 Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm các «việc»; việc có **loại** (camera / thẻ / ảnh / video / chữ), **mức ưu tiên** 1–4, **thời gian giữ**, **tên lớp**. TV 49 inch hiển thị **nhiều camera trực tiếp và nhiều thẻ cùng lúc**.
 
@@ -8,7 +8,7 @@ Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm 
 | Khác tên lớp | xếp chồng |
 | Ưu tiên cao hơn | luôn ở trên |
 | Cùng mức | việc đến sau đè lên |
-| Camera + thẻ cùng mức trên cùng | **đứng chung màn**: lưới camera (1→1×1, 2→2×1, 3→2+1, 4→2×2, 5→3+2, 6→3×2…, tối đa 9, mặc định 6; `max_cams`) bên trái, thẻ xếp dọc bên phải (mặc định 4; `max_cards`); chỉ camera thì lưới chiếm cả màn, chỉ thẻ thì thẻ chiếm cả màn. Nhiều hơn giới hạn thì đổi trang mỗi 5 giây |
+| Camera + thẻ cùng mức trên cùng | **đứng chung màn**: lưới camera (1→1×1, 2→2×1, 3→2+1, 4→2×2, 5→3+2, 6→3×2…, tối đa 9, **mặc định 2** vì tivi webOS 3 yếu (xem số đo ở README gốc); `max_cams`) bên trái, thẻ xếp dọc bên phải (mặc định 4; `max_cards`); chỉ camera thì lưới chiếm cả màn, chỉ thẻ thì thẻ chiếm cả màn. Nhiều hơn giới hạn thì đổi trang mỗi 5 giây |
 | Việc mới nhất là ảnh / video / chữ | hiện một mình, che camera và thẻ |
 | Hết hạn hoặc bấm Back | về lớp dưới |
 | Hết sạch | app tự đóng, TV trở lại nội dung đang xem |
@@ -17,7 +17,7 @@ Cùng mô hình với `dosen_pro.screen_show` / `screen_card`: HA mở app kèm 
 ## Cài
 
 ```
-ares-install --device tv com.viet.livecam_1.3.0_all.ipk
+ares-install --device tv com.viet.livecam_1.3.1_all.ipk
 ```
 
 Mở app từ danh sách app trên TV **một lần** để nhập địa chỉ HA + token. Nên tạo một người dùng HA riêng chỉ có quyền xem camera (token lưu dạng chữ trong bộ nhớ TV).
@@ -54,8 +54,8 @@ Mở app từ danh sách app trên TV **một lần** để nhập địa chỉ 
 node tests/test_layers.js            # luật lớp, lưới, thẻ (hàm thuần)
 node tests/test_cardfmt.js           # định dạng giá trị thẻ
 python3 tests/e2e_chrome.py          # Chrome thật + HA giả: lớp, chia đôi, đếm kết nối MJPEG/WS còn mở sau mỗi bước
-./build_ipk.sh 1.3.0                 # đóng gói gói đầy màn hình (com.viet.livecam)
-./build_ipk.sh 1.3.0 popup           # gói cửa sổ góc THỬ NGHIỆM (com.viet.livecam.popup, defaultWindowType=overlay)
+./build_ipk.sh 1.3.1                 # đóng gói gói đầy màn hình (com.viet.livecam)
+./build_ipk.sh 1.3.1 popup           # gói cửa sổ góc THỬ NGHIỆM (com.viet.livecam.popup, defaultWindowType=overlay)
 ```
 
 Chưa có: băng chuyền (`screen_carousel`), màn mặc định (đồng hồ) — app đóng thì TV trở lại nội dung đang xem.

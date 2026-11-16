@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "Live Cam 1.3.0";
+  var VERSION = "Live Cam 1.3.1";
   var sys = window.webOSSystem || window.PalmSystem || null;
   var stage = document.getElementById("stage");
   var tilesEl = document.getElementById("tiles");

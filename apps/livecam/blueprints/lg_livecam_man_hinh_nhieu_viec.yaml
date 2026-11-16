@@ -29,8 +29,8 @@ blueprint:
               domain: media_player
         toi_da_camera:
           name: Số camera tối đa cùng lúc
-          description: "Lưới camera: 1 đến 9 (TV 49 inch: 6 là thoải mái). Nhiều hơn thì đổi trang mỗi 5 giây."
-          default: 6
+          description: "Lưới camera: 1 đến 9. TV LG webOS 3 (2016) yếu: đo thật cho thấy mỗi hình cập nhật vài lần/giây đã ngốn gần hết CPU, nên mặc định 2. Nhiều hơn thì đổi trang mỗi 5 giây."
+          default: 2
           selector:
             number: {min: 1, max: 9, mode: box}
         toi_da_the:
@@ -244,7 +244,7 @@ variables:
         {% set ns.l = ns.l + [{'cmd': 'show', 'kind': 'video' if kieu == 'video' else 'image', 'url': s.nguon | default('', true), 'owner': lop, 'priority': uu, 'ttl': tg, 'loop': s.lap | default(false, true) | bool(false), 'title': s.tieu_de | default('', true)}] %}
       {% endif %}
     {% endfor %}
-    {{ ns.l | map('combine', {'max_cams': toi_da_camera | int(6), 'max_cards': toi_da_the | int(4)}) | list }}
+    {{ ns.l | map('combine', {'max_cams': toi_da_camera | int(2), 'max_cards': toi_da_the | int(4)}) | list }}
 action:
   - if: "{{ items | count > 0 }}"
     then:

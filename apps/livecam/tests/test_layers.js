@@ -18,8 +18,14 @@ ok("hai camera cung muc chia doi man, moi nhat truoc", function () {
   var l = new L.Layers(); l.show({ owner: "a", camera: "camera.a" }, T0); l.show({ owner: "b", camera: "camera.b" }, T0);
   assert.deepEqual(owners(l, T0), ["b", "a"]);
 });
-ok("tam camera cung muc: TAT CA hien cung luc (TV 49 inch), moi nhat truoc", function () {
+ok("mac dinh chi 2 camera cung luc (TV webOS 3 yeu: do that, xem layers.js), con lai doi trang", function () {
   var l = new L.Layers(); for (var i = 0; i < 5; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i }, T0); }
+  var pages = [owners(l, 0), owners(l, 5000), owners(l, 10000)];
+  pages.forEach(function (pg) { assert.ok(pg.length >= 1 && pg.length <= 2, "moi trang toi da 2 camera: " + pg.length); });
+  assert.deepEqual(pages[0].concat(pages[1], pages[2]).sort(), ["c0", "c1", "c2", "c3", "c4"], "ba trang gop lai du ca 5, khong sot");
+});
+ok("tam camera cung muc khi nang max_cams: TAT CA hien cung luc, moi nhat truoc", function () {
+  var l = new L.Layers(); for (var i = 0; i < 5; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 6 }, T0); }
   var v = owners(l, T0); assert.equal(v.length, 5); assert.equal(v[0], "c4"); assert.deepEqual(owners(l, T0 + 5000), v, "chua vuot gioi han thi khong doi luot");
 });
 ok("vuot gioi han camera: chia trang, doi luot moi 5 giay, du ca ba, khong sot", function () {
@@ -28,9 +34,11 @@ ok("vuot gioi han camera: chia trang, doi luot moi 5 giay, du ca ba, khong sot",
   assert.equal(p1.length, 3); assert.equal(p2.length, 3); assert.equal(p3.length, 2); assert.deepEqual(p4, p1);
   assert.deepEqual(p1.concat(p2, p3).sort(), ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7"]);
 });
-ok("mac dinh toi da 6 camera, tran cung 9", function () {
+ok("mac dinh toi da 2 camera, nang len 6 duoc, tran cung 9", function () {
   var l = new L.Layers(); for (var i = 0; i < 12; i++) { l.show({ owner: "c" + i, camera: "camera.c" + i }, T0); }
-  assert.equal(l.plan(0).cams.length, 6);
+  assert.equal(l.plan(0).cams.length, 2);
+  var six = new L.Layers(); for (i = 0; i < 12; i++) { six.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 6 }, T0); }
+  assert.equal(six.plan(0).cams.length, 6);
   var m = new L.Layers(); for (i = 0; i < 12; i++) { m.show({ owner: "c" + i, camera: "camera.c" + i, max_cams: 99 }, T0); }
   assert.equal(m.plan(0).cams.length, 9, "max_cams bi chan o 9");
 });

@@ -1,9 +1,9 @@
 [Unit]
-Description=Canh app tren TV LG moi 2 phut
+Description=Canh app tren TV LG moi 5 phut
 
 [Timer]
 OnBootSec=60
-OnUnitActiveSec=2min
+OnUnitActiveSec=5min
 AccuracySec=15s
 
 [Install]

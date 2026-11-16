@@ -250,7 +250,7 @@ async def main():
             # --- S13: nhieu camera + nhieu the cung luc (TV 49 inch): luoi camera ben trai, the xep doc ben phai, so lieu SONG
             pg = await open_page("")
             await wait(lambda: pg.js("typeof LiveCam==='object'"), 5, "app nap")
-            cams = [{"cmd": "show", "kind": "camera", "camera": "camera.c%d" % n, "owner": "cam%d" % n, "ttl": 120, "title": "Cam %d" % n} for n in range(4)]
+            cams = [{"cmd": "show", "kind": "camera", "camera": "camera.c%d" % n, "owner": "cam%d" % n, "ttl": 120, "title": "Cam %d" % n, "max_cams": 6} for n in range(4)]
             cards = [{"cmd": "show", "kind": "card", "owner": "nhiet", "ttl": 120, "title": "Thời tiết", "main_entity": "sensor.nhiet", "caption": "Phòng khách", "color": "orange"},
                      {"cmd": "show", "kind": "card", "owner": "nha", "ttl": 120, "title": "Trong nhà", "entities": ["binary_sensor.nguoi", "binary_sensor.cua"], "rows": ["Chế độ: Ở nhà"]}]
             await pg.js("LiveCam.handle(%s)" % json.dumps({"items": cams + cards, "connect": {"url": "http://127.0.0.1:%d" % port, "token": "tok"}}))
@@ -287,10 +287,10 @@ async def main():
             ok("S13d thoát: không còn đăng ký thẻ, WS hay luồng camera nào")
             await pg.ws.close()
 
-            # --- S14: 8 camera, tran mac dinh 6: hien 6, sau 5 giay doi sang 2 con lai (luong cu dong, luong moi mo)
+            # --- S14: 8 camera voi max_cams=6 (mac dinh la 2, xem S15): hien 6, sau 5 giay doi sang 2 con lai (luong cu dong, luong moi mo)
             pg = await open_page("")
             await wait(lambda: pg.js("typeof LiveCam==='object'"), 5, "app nap")
-            many = [{"cmd": "show", "kind": "camera", "camera": "camera.m%d" % n, "owner": "m%d" % n, "ttl": 60} for n in range(8)]
+            many = [{"cmd": "show", "kind": "camera", "camera": "camera.m%d" % n, "owner": "m%d" % n, "ttl": 60, "max_cams": 6} for n in range(8)]
             await pg.js("LiveCam.handle(%s)" % json.dumps({"items": many, "connect": {"url": "http://127.0.0.1:%d" % port, "token": "tok"}}))
             await wait(lambda: pg.js(tiles + "==6"), 10, "6 o dau")
             open_now = lambda: sum(v for k, v in ha.mjpeg.items() if k.startswith("camera.m"))

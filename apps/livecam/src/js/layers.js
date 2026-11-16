@@ -10,7 +10,9 @@
   var MAX_TTL = 3600;          // tran cung: khong viec nao o lai qua 1 gio (tranh quen tat -> luong chay mai)
   var ROTATE_MS = 5000;
   var KINDS = { camera: 1, image: 1, video: 1, text: 1, card: 1 };
-  var CAMS_DEFAULT = 6, CAMS_MAX = 9;      // TV 49 inch: 6 camera cung luc la thoai mai; toi da 9 (3x3)
+  // Do tren 49UH617T (webOS 3, 4 loi ARM, Chromium 38 ve bang PHAN MEM): chi 1 o hinh cap nhat 5 khung/giay da tieu ~370% CPU (tran 400%), 15 khung/giay ~500%;
+  // 1 khung/giay ~140%. Chi phi tang theo SO KHUNG/GIAY, khong theo so o. Mac dinh 2 camera; CAMS_MAX 9 chi de ho tro TV manh hon, KHONG nen dung tren TV nay.
+  var CAMS_DEFAULT = 2, CAMS_MAX = 9;
   var CARDS_DEFAULT = 4, CARDS_MAX = 8;
   var ENTITY_RE = /^[a-z_]+\.[a-z0-9_]+$/;
 

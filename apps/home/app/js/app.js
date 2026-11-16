@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var CFG = window.HOME_CONFIG, sys = window.webOSSystem || window.PalmSystem || null;
-  var VERSION = "Home 1.0.0";
+  var VERSION = "Home 1.0.1";
   var SVG = {
     play: '<rect x="8" y="14" width="48" height="36" rx="9"/><path d="M27 24l14 8-14 8z" fill="#fff"/>',
     cam: '<rect x="6" y="18" width="38" height="28" rx="5"/><path d="M44 28l14-8v24l-14-8z"/>',
@@ -79,18 +79,26 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.className = ""; }, ms || 3500);
   }
   function hideToast() { clearTimeout(toastTimer); document.getElementById("toast").className = ""; }
+  // Mo app khac xong thi TU DONG TAT Man hinh chinh: thanh Home cua LG giu moi app da mo o nen nhu «app gan day» (da thay the «Man hinh chinh» nam trong thanh),
+  // ma TV nay chi con ~50-100 MB RAM trong 1,1 GB. Dong sau CLOSE_AFTER_MS neu khong co loi; loi (returnValue:false) thi o lai de hien thong bao.
+  var CLOSE_AFTER_MS = 2500, closeTimer = null;
   function open(item) {
     var done = false;
     toast("Đang mở " + item.title + "…", 8000);
+    clearTimeout(closeTimer);
     try {
       var b = new PalmServiceBridge();
       b.onservicecallback = function (m) {
         var r = {}; if (done) { return; } done = true;
         try { r = JSON.parse(m); } catch (e) { r = {}; }
-        if (r.returnValue === false) { toast(r.errorCode === -101 ? item.title + " chưa được cài trên tivi" : "Không mở được " + item.title + (r.errorText ? " (" + String(r.errorText).slice(0, 80) + ")" : ""), 6000); beacon("launch-fail", item.id + " " + m); }
-        else { hideToast(); }
+        if (r.returnValue === false) {
+          clearTimeout(closeTimer);
+          toast(r.errorCode === -101 ? item.title + " chưa được cài trên tivi" : "Không mở được " + item.title + (r.errorText ? " (" + String(r.errorText).slice(0, 80) + ")" : ""), 6000);
+          beacon("launch-fail", item.id + " " + m);
+        } else { hideToast(); }
       };
       b.call("luna://com.webos.applicationManager/launch", JSON.stringify({ id: item.id }));
+      closeTimer = setTimeout(function () { close(); }, CLOSE_AFTER_MS);
     } catch (e) { toast("App này chỉ mở được trên tivi LG", 4000); }
   }
   function close() {
@@ -104,7 +112,7 @@
     }
     clearTimeout(clockTimer); clockTimer = setTimeout(tickClock, 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50);
   }
-  function reset() { want = 0; setFocus(0, 0); hideToast(); tickClock(); }
+  function reset() { clearTimeout(closeTimer); want = 0; setFocus(0, 0); hideToast(); tickClock(); }
 
   document.addEventListener("keydown", function (e) {
     var k = e.keyCode;
