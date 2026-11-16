@@ -1,0 +1,9 @@
+giu_app_tv.env
+giu_app_tv.log
+.giu_app_tv.lock
+*.log
+node_modules/
+__pycache__/
+.webos/
+.ssh/
+novacom-devices.json

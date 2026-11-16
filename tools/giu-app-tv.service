@@ -1,0 +1,10 @@
+[Unit]
+Description=Giu app Developer Mode tren TV LG webOS 3 (cai lai app bi quen)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Sua duong dan cho dung may cua ban; cau hinh (TV_HOST...) nam trong giu_app_tv.env canh script
+ExecStart=/opt/tv-apps/giu_app_tv.sh
+Nice=10
+TimeoutStartSec=300

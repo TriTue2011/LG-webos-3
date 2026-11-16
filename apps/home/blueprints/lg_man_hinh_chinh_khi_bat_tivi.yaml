@@ -1,0 +1,56 @@
+blueprint:
+  name: "TV LG: bật TV là hiện màn hình chọn app (Màn hình chính)"
+  description: >-
+    Khi **TV LG webOS** chuyển từ tắt sang bật, đợi vài giây cho TV khởi động xong rồi mở app **Màn hình chính** (`com.viet.home`) —
+    lưới app + nguồn vào kiểu Android TV / Apple TV.
+
+
+    **Giới hạn thật:** TV webOS 3 không cho app thường thay màn Home của LG hay nút Home trên remote (cần root), nên đây là cách duy nhất:
+    HA mở app ngay sau khi TV bật. Nếu bật TV để xem thẳng một nguồn (HDMI…) thì màn này sẽ phủ lên; bấm **Back** trên remote để thoát về nguồn đó.
+    Không muốn thì tắt automation này.
+
+
+    **Cần:** TV đã thêm vào HA bằng tích hợp **LG webOS TV**; app `com.viet.home` đã cài (Developer Mode). Tích hợp phải thấy TV chuyển `off` → `on`;
+    TV tắt hẳn rồi rút điện thì HA chỉ thấy `unavailable` → `on`, blueprint cũng tính trường hợp đó.
+  domain: automation
+  author: TriTue2011
+  homeassistant:
+    min_version: 2024.11.0
+  input:
+    tv:
+      name: TV LG
+      selector:
+        entity:
+          integration: webostv
+          domain: media_player
+    cho_giay:
+      name: Đợi bao nhiêu giây sau khi TV bật
+      description: "TV vừa bật còn đang nạp màn Home/nguồn cuối. Mở app quá sớm thì bị LG Home đè lại. Mặc định 12 giây."
+      default: 12
+      selector:
+        number: {min: 3, max: 60, mode: box, unit_of_measurement: s}
+    app_id:
+      name: ID app cần mở
+      default: com.viet.home
+      selector:
+        text: {}
+mode: restart
+max_exceeded: silent
+triggers:
+  - trigger: state
+    entity_id: !input tv
+    from: ["off", "unavailable"]
+    to: "on"
+actions:
+  - delay:
+      seconds: !input cho_giay
+  - condition: template
+    value_template: "{{ is_state(tv_id, 'on') }}"
+  - action: webostv.command
+    data:
+      entity_id: !input tv
+      command: com.webos.applicationManager/launch
+      payload:
+        id: !input app_id
+variables:
+  tv_id: !input tv

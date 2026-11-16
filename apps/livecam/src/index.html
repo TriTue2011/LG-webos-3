@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Live Cam</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Man hinh xem: cac o hinh (1 hoac 2) do app.js dung theo cac lop dang hien -->
+  <div id="stage" class="hidden">
+    <div id="tiles"></div>
+    <div id="hint" class="hint">Nhấn BACK để tắt</div>
+  </div>
+
+  <!-- Man hinh cai dat: mo khi chay app tu danh sach app, hoac khi chua co ket noi -->
+  <section id="settings" class="settings hidden">
+    <div class="panel">
+      <header>
+        <h1>Cài đặt Live Cam</h1>
+        <span id="s-version" class="version"></span>
+      </header>
+
+      <h2>Kết nối Home Assistant</h2>
+      <div class="row" data-key="url">
+        <span class="name">Địa chỉ HA</span>
+        <input class="value" type="url" placeholder="http://192.168.1.10:8123" spellcheck="false">
+      </div>
+      <div class="row" data-key="token">
+        <span class="name">Token dài hạn</span>
+        <input class="value" type="password" placeholder="Nhập token, hoặc gửi từ HA" spellcheck="false">
+      </div>
+      <div class="row buttons">
+        <button data-action="test">Kiểm tra kết nối</button>
+        <span id="s-status" class="status"></span>
+      </div>
+
+      <h2>Mặc định <small>dùng khi HA không chỉ định</small></h2>
+      <div class="row choice" data-key="camera"><span class="name">Camera</span><span class="value"></span></div>
+      <div class="row choice" data-key="format"><span class="name">Định dạng</span><span class="value"></span></div>
+      <div class="row choice" data-key="timeout"><span class="name">Tự tắt sau</span><span class="value"></span></div>
+
+      <div class="row buttons actions">
+        <button data-action="save" class="primary">Lưu</button>
+        <button data-action="preview">Xem thử</button>
+        <button data-action="exit">Thoát</button>
+      </div>
+
+      <footer>
+        <span><b class="k">▲▼</b> di chuyển</span>
+        <span><b class="k">◀▶</b> đổi lựa chọn</span>
+        <span><b class="k">OK</b> nhập / chọn</span>
+        <span><b class="k">Back</b> thoát</span>
+      </footer>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/layers.js"></script>
+  <script src="js/cardfmt.js"></script>
+  <script src="js/ha.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

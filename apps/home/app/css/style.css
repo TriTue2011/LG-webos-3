@@ -1,0 +1,24 @@
+html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; }
+body { background: #0b0f14; background: -webkit-linear-gradient(315deg, #0b0f14 0%, #15202e 55%, #1d2b3d 100%); background: linear-gradient(135deg, #0b0f14 0%, #15202e 55%, #1d2b3d 100%);
+  color: #fff; font-family: "LG Smart UI", "Helvetica Neue", Arial, sans-serif; position: relative; }
+#top { position: absolute; left: 120px; top: 56px; width: 1680px; height: 150px; }
+#clock { font-size: 104px; line-height: 104px; font-weight: bold; letter-spacing: 2px; }
+#date { font-size: 34px; margin-top: 10px; color: #aebbd0; }
+#hint { position: absolute; right: 0; top: 18px; font-size: 24px; color: #6f7f96; }
+.label { position: absolute; left: 120px; font-size: 26px; letter-spacing: 3px; text-transform: uppercase; color: #6f7f96; }
+#apps { position: absolute; left: 104px; top: 246px; width: 1740px; }
+#inputsLabel { top: 822px; }
+#inputs { position: absolute; left: 104px; top: 868px; width: 1740px; }
+.row { display: -webkit-box; display: -webkit-flex; display: flex; height: 268px; }
+.tile { box-sizing: border-box; width: 232px; height: 236px; margin: 16px; border-radius: 22px; background: #223045; text-align: center; position: relative; cursor: pointer;
+  border: 6px solid transparent; transition: transform 0.12s, background 0.12s, box-shadow 0.12s; }
+.tile.focus { background: #2f4563; border-color: #fff; transform: scale(1.1); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55); z-index: 2; }
+.tile .ico { position: absolute; left: 50%; top: 34px; width: 112px; height: 112px; margin-left: -56px; }
+.tile .ico img { width: 112px; height: 112px; display: block; }
+.tile .name { position: absolute; left: 8px; right: 8px; bottom: 22px; font-size: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.input .tile, .tile.input { height: 118px; }
+.tile.input .name { top: 0; bottom: 0; line-height: 106px; font-size: 34px; font-weight: bold; }
+.tile.input .ico { display: none; }
+.rowin { height: 150px; }
+#toast { position: absolute; left: 0; right: 0; bottom: 36px; margin: 0 auto; width: 900px; padding: 18px 24px; border-radius: 14px; background: rgba(0, 0, 0, 0.85); font-size: 30px; text-align: center; opacity: 0; transition: opacity 0.2s; }
+#toast.on { opacity: 1; }
